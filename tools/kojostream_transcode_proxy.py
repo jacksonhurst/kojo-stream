@@ -209,6 +209,7 @@ class SessionManager:
         self.ffmpeg_path = ffmpeg_path
         self.root_dir = root_dir
         self.settings = settings
+        self.single_active_stream = settings["single_active_stream"]
         self.sessions = {}
         self.lock = threading.Lock()
         root_dir.mkdir(parents=True, exist_ok=True)
@@ -236,6 +237,26 @@ class SessionManager:
                 self.sessions[session_id] = session
             return session
 
+    def activate_session(self, active_session):
+        if not self.single_active_stream:
+            return
+
+        sessions_to_stop = []
+        with self.lock:
+            for session_id, session in list(self.sessions.items()):
+                if session is active_session:
+                    continue
+                sessions_to_stop.append((session_id, session))
+                del self.sessions[session_id]
+
+        for session_id, session in sessions_to_stop:
+            print(
+                f"Stopping previous transcode session {session_id} before starting {active_session.session_id}",
+                flush=True,
+            )
+            session.stop()
+            shutil.rmtree(session.work_dir, ignore_errors=True)
+
     def cleanup_loop(self):
         while True:
             time.sleep(300)
@@ -251,7 +272,7 @@ class SessionManager:
                     del self.sessions[session_id]
 
         for session_id, session in stale_sessions:
-            print(f"Cleaning up inactive transcode session {session_id}")
+            print(f"Cleaning up inactive transcode session {session_id}", flush=True)
             session.stop()
             shutil.rmtree(session.work_dir, ignore_errors=True)
 
@@ -292,12 +313,18 @@ class ProxyHandler(BaseHTTPRequestHandler):
         headers = {key: value for key, value in headers.items() if value}
 
         session = self.manager.get_session(source_url, headers)
+        source_host = urlparse(source_url).netloc
+        print(
+            f"HLS request session={session.session_id} source_host={source_host} path={urlparse(source_url).path}",
+            flush=True,
+        )
+        self.manager.activate_session(session)
         session.ensure_running()
         if not session.wait_for_playlist():
             log_tail = session.read_log_tail()
             if log_tail:
-                print("FFmpeg did not produce an HLS playlist. Recent log output:")
-                print(log_tail)
+                print("FFmpeg did not produce an HLS playlist. Recent log output:", flush=True)
+                print(log_tail, flush=True)
             self.send_error(
                 HTTPStatus.BAD_GATEWAY,
                 "FFmpeg did not produce an HLS playlist in time. Check the proxy window for recent FFmpeg output.",
@@ -362,7 +389,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def log_message(self, fmt, *args):
-        print(f"{self.address_string()} - {fmt % args}")
+        print(f"{self.address_string()} - {fmt % args}", flush=True)
 
 
 def first_query_value(query, key):
@@ -390,7 +417,14 @@ def build_transcode_settings(args):
         "hls_delete_threshold": args.hls_delete_threshold,
         "keyframe_seconds": args.keyframe_seconds,
         "gop_size": args.gop_size,
+        "single_active_stream": parse_bool(args.single_active_stream),
     }
+
+
+def parse_bool(value):
+    if value is None:
+        return False
+    return value.strip().lower() in ("1", "true", "yes", "y", "on")
 
 
 def main():
@@ -418,6 +452,11 @@ def main():
     parser.add_argument("--hls-delete-threshold", default=os.getenv("KOJO_HLS_DELETE_THRESHOLD", "4"))
     parser.add_argument("--keyframe-seconds", default=os.getenv("KOJO_KEYFRAME_SECONDS", "2"))
     parser.add_argument("--gop-size", default=os.getenv("KOJO_GOP_SIZE", "60"))
+    parser.add_argument(
+        "--single-active-stream",
+        default=os.getenv("KOJO_SINGLE_ACTIVE_STREAM", "true"),
+        help="Stop other active FFmpeg sessions when a new channel starts. Helps IPTV providers with one-stream limits.",
+    )
     args = parser.parse_args()
 
     if shutil.which(args.ffmpeg) is None and not Path(args.ffmpeg).exists():
@@ -428,9 +467,9 @@ def main():
     ProxyHandler.manager = manager
 
     server = ThreadingHTTPServer((args.host, args.port), ProxyHandler)
-    print(f"KojoStream transcode proxy listening on http://{args.host}:{args.port}")
-    print("Set the Roku app Transcode Server setting to this PC's LAN URL, for example http://192.168.1.25:8977")
-    print("Transcode settings: " + json.dumps(settings, sort_keys=True))
+    print(f"KojoStream transcode proxy listening on http://{args.host}:{args.port}", flush=True)
+    print("Set the Roku app Transcode Server setting to this PC's LAN URL, for example http://192.168.1.25:8977", flush=True)
+    print("Transcode settings: " + json.dumps(settings, sort_keys=True), flush=True)
     server.serve_forever()
 
 

@@ -15,6 +15,7 @@ services:
       KOJO_VIDEO_MAXRATE: 10M
       KOJO_VIDEO_BUFSIZE: 20M
       KOJO_AUDIO_BITRATE: 160k
+      KOJO_SINGLE_ACTIVE_STREAM: "true"
     volumes:
       - kojostream-transcode-cache:/cache
 
