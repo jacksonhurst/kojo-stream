@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="HomeScene" extends="Scene">
+    <script type="text/brightscript" uri="pkg:/components/HomeScene.brs" />
+    <children>
+        <Poster
+            id="Background"
+            width="1920"
+            height="1080"
+            uri="pkg:/images/background.png"
+            loadDisplayMode="scaleToFill" />
+
+        <!-- Channel count / status label -->
+        <Label
+            id="ChannelCountLabel"
+            translation="[60,0]"
+            width="1860"
+            height="50"
+            font="font:SmallSystemFont"
+            color="0xFFFFFFFF"
+            text="Channels loaded: 0"
+            scale="[0.7, 0.7]"
+            vertAlign="center" />
+
+        <!-- PIP Video player -->
+        <Video
+            id="Video"
+            translation="[1200,0]"
+            width="720"
+            height="405"
+            enableUI="false"
+            loop="true"
+            enableTrickPlay="true" />
+
+        <!-- Preview poster for focused channel -->
+        <Poster
+            id="PreviewPoster"
+            translation="[60,60]"
+            width="480"
+            height="270"
+            loadDisplayMode="scaleToFit"
+            visible="false"
+            opacity="0" />
+
+        <!-- Channel list layout -->
+        <LayoutGroup
+            id="CategoryLayout"
+            translation="[60,360]"
+            layoutDirection="vert"
+            itemSpacings="[12]">
+            <Label
+                id="CategoryLabel"
+                width="520"
+                height="40"
+                font="font:MediumBoldSystemFont"
+                color="0xFFFFFFFF" />
+            <Group
+                id="ChannelListViewport"
+                clippingRect="[0,0,520,620]">
+                <MarkupList
+                    id="RowList"
+                    itemComponentName="RowListItems"
+                    itemSize="[520,95]"
+                    itemSpacing="[0,10]"
+                    width="520"
+                    height="620"
+                    vertFocusAnimationStyle="fixedFocus"
+                    drawFocusFeedback="true" />
+            </Group>
+        </LayoutGroup>
+
+        <!-- Next category label -->
+        <Label
+            id="CategoryLabel2"
+            translation="[60,990]"
+            width="520"
+            height="40"
+            font="font:SmallSystemFont"
+            color="0xBBBBBBFF" />
+
+        <!-- Side menu -->
+        <Group id="SideMenu">
+            <Rectangle
+                id="MenuBackground"
+                width="60"
+                height="1080"
+                color="0x000000FF" />
+            <LayoutGroup
+                id="MenuItems"
+                translation="[10,100]"
+                layoutDirection="vert"
+                itemSpacings="[30]">
+                <!-- Home -->
+                <Group id="MenuItem0">
+                    <Rectangle id="IconHighlight0" translation="[-10,0]" width="8" height="40" color="0xE63946FF" visible="false" />
+                    <Label id="MenuIcon0" translation="[5,8]" width="30" height="30" text="H" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
+                    <Label id="MenuLabel0" translation="[50,0]" width="400" height="40" text="Home" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" visible="false" />
+                </Group>
+                <!-- Search -->
+                <Group id="MenuItem1">
+                    <Rectangle id="IconHighlight1" translation="[-10,0]" width="8" height="40" color="0xE63946FF" visible="false" />
+                    <Label id="MenuIcon1" translation="[5,8]" width="30" height="30" text="S" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
+                    <Label id="MenuLabel1" translation="[50,0]" width="400" height="40" text="Search" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" visible="false" />
+                </Group>
+                <!-- Playlists -->
+                <Group id="MenuItem2">
+                    <Rectangle id="IconHighlight2" translation="[-10,0]" width="8" height="40" color="0xE63946FF" visible="false" />
+                    <Label id="MenuIcon2" translation="[5,8]" width="30" height="30" text="P" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
+                    <Label id="MenuLabel2" translation="[50,0]" width="400" height="40" text="Playlists" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" visible="false" />
+                </Group>
+                <!-- Refresh -->
+                <Group id="MenuItem3">
+                    <Rectangle id="IconHighlight3" translation="[-10,0]" width="8" height="40" color="0xE63946FF" visible="false" />
+                    <Label id="MenuIcon3" translation="[5,8]" width="30" height="30" text="R" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
+                    <Label id="MenuLabel3" translation="[50,0]" width="400" height="40" text="Refresh" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" visible="false" />
+                </Group>
+                <!-- Settings -->
+                <Group id="MenuItem4">
+                    <Rectangle id="IconHighlight4" translation="[-10,0]" width="8" height="40" color="0xE63946FF" visible="false" />
+                    <Label id="MenuIcon4" translation="[5,8]" width="30" height="30" text="G" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
+                    <Label id="MenuLabel4" translation="[50,0]" width="400" height="40" text="Settings" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" visible="false" />
+                </Group>
+            </LayoutGroup>
+        </Group>
+
+        <!-- Info bar at bottom -->
+        <Rectangle
+            id="InfoBar"
+            translation="[60,980]"
+            width="1860"
+            height="100"
+            color="0x1A1A1AFF"
+            opacity="0.9"
+            visible="false">
+            <Label
+                id="InfoLabel"
+                translation="[50,30]"
+                width="1760"
+                height="40"
+                font="font:MediumBoldSystemFont"
+                color="0xFFFFFFFF" />
+        </Rectangle>
+
+        <!-- Overlay screens -->
+        <PlaylistManager
+            id="PlaylistManager"
+            visible="false" />
+
+        <SettingsScreen
+            id="SettingsScreen"
+            visible="false" />
+
+        <!-- Timers -->
+        <Timer id="ChannelLoadedTimer" duration="2" />
+        <Timer id="LoadingProgressTimer" duration="0.5" repeat="true" />
+
+        <!-- Animations -->
+        <Animation id="ScrollCategoryLabelUp" duration="0.03">
+            <Vector2DFieldInterpolator fieldToInterp="CategoryLabel.translation" key="[0,1]" keyValue="[[0,-10],[0,0]]" />
+        </Animation>
+        <Animation id="ScrollCategoryLabelDown" duration="0.03">
+            <Vector2DFieldInterpolator fieldToInterp="CategoryLabel.translation" key="[0,1]" keyValue="[[0,10],[0,0]]" />
+        </Animation>
+        <Animation id="ScrollCategoryLabel2Up" duration="0.03">
+            <Vector2DFieldInterpolator fieldToInterp="CategoryLabel2.translation" key="[0,1]" keyValue="[[110,638],[110,648]]" />
+        </Animation>
+        <Animation id="ScrollCategoryLabel2Down" duration="0.03">
+            <Vector2DFieldInterpolator fieldToInterp="CategoryLabel2.translation" key="[0,1]" keyValue="[[110,658],[110,648]]" />
+        </Animation>
+        <Animation id="ExpandMenu" duration="0.2">
+            <FloatFieldInterpolator fieldToInterp="MenuBackground.width" key="[0,1]" keyValue="[60,500]" />
+        </Animation>
+        <Animation id="CollapseMenu" duration="0.2">
+            <FloatFieldInterpolator fieldToInterp="MenuBackground.width" key="[0,1]" keyValue="[500,60]" />
+        </Animation>
+        <Animation id="FadeInPreview" duration="0.3">
+            <FloatFieldInterpolator fieldToInterp="PreviewPoster.opacity" key="[0,1]" keyValue="[0,1]" />
+        </Animation>
+        <Animation id="FadeOutPreview" duration="0.3">
+            <FloatFieldInterpolator fieldToInterp="PreviewPoster.opacity" key="[0,1]" keyValue="[1,0]" />
+        </Animation>
+        <Animation id="LoadingAnimation1" duration="1.0" repeat="true">
+            <FloatFieldInterpolator fieldToInterp="CategoryLabel.opacity" key="[0,0.5,1]" keyValue="[1.0,0.3,1.0]" />
+        </Animation>
+        <Animation id="LoadingAnimation2" duration="1.0" repeat="true">
+            <FloatFieldInterpolator fieldToInterp="CategoryLabel2.opacity" key="[0,0.5,1]" keyValue="[1.0,0.3,1.0]" />
+        </Animation>
+    </children>
+</component>

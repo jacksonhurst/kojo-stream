@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="PlaylistManager" extends="Group">
+    <interface>
+        <field id="selectedUrl" type="string" alwaysNotify="true" />
+        <field id="selectedXmltv" type="string" alwaysNotify="true" />
+        <field id="visible" type="boolean" value="false" onChange="onVisibleChange" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/PlaylistManager.brs" />
+    <children>
+        <Rectangle
+            id="ManagerBackground"
+            width="1920"
+            height="1080"
+            color="0x1A1A2EFF" />
+
+        <Label
+            id="TitleLabel"
+            translation="[100,40]"
+            width="800"
+            height="60"
+            text="Playlists"
+            font="font:LargeBoldSystemFont"
+            color="0xE63946FF" />
+
+        <Label
+            id="InstructionLabel"
+            translation="[100,100]"
+            width="1200"
+            height="40"
+            text="Select a playlist to load, or press * to add a new one"
+            font="font:SmallSystemFont"
+            color="0xAAAAAAFF" />
+
+        <MarkupList
+            id="PlaylistList"
+            translation="[100,160]"
+            itemComponentName="PlaylistRowItem"
+            itemSize="[1720,90]"
+            itemSpacing="[0,10]"
+            drawFocusFeedback="true"
+            vertFocusAnimationStyle="floatingFocus"
+            visible="true" />
+
+        <Label
+            id="EmptyLabel"
+            translation="[100,300]"
+            width="1720"
+            height="200"
+            text="No playlists added yet. Press OK to add your first playlist."
+            font="font:MediumBoldSystemFont"
+            color="0xFFFFFFFF"
+            horizAlign="center"
+            vertAlign="center"
+            visible="false" />
+
+        <LayoutGroup
+            id="ButtonBar"
+            translation="[100,900]"
+            layoutDirection="horiz"
+            itemSpacings="[20]">
+        </LayoutGroup>
+
+        <Label
+            id="HintLabel"
+            translation="[100,1020]"
+            width="1720"
+            height="40"
+            text="OK = Load  |  * = Add  |  Play = Edit  |  Rewind = Delete  |  Back = Cancel"
+            font="font:SmallSystemFont"
+            color="0x888888FF"
+            horizAlign="center" />
+    </children>
+</component>

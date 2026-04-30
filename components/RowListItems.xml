@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="RowListItems" extends="Group">
+    <interface>
+        <field id="itemContent" type="node" onChange="updateContent" />
+        <field id="height" type="float" onChange="updateSize" />
+        <field id="width" type="float" onChange="updateSize" />
+        <field id="isLoading" type="boolean" value="false" onChange="onLoadingChange" />
+    </interface>
+
+    <script type="text/brightscript" uri="pkg:/components/RowListItems.brs" />
+
+    <children>
+        <Rectangle id="background" width="520" height="95" color="0x1C2526FF" />
+        <Poster id="poster" translation="[10,10]" width="133" height="75" loadDisplayMode="scaleToFit" uri="pkg:/images/loading.png" />
+        <Label
+            id="titleLabel"
+            translation="[160,10]"
+            width="340"
+            height="34"
+            font="font:MediumBoldSystemFont"
+            color="0xFFFFFFFF" />
+        <Label
+            id="metaLabel"
+            translation="[160,46]"
+            width="340"
+            height="30"
+            font="font:SmallSystemFont"
+            color="0xC0C0C0FF" />
+
+        <Animation
+            id="LoadingAnimation"
+            duration="1.0"
+            repeat="true">
+            <FloatFieldInterpolator
+                fieldToInterp="poster.opacity"
+                key="[0,0.5,1]"
+                keyValue="[1.0,0.3,1.0]" />
+        </Animation>
+    </children>
+</component>

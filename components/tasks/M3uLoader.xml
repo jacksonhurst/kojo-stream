@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="M3uLoader" extends="Task">
+    <interface>
+        <field id="content" type="node" />
+        <field id="m3uUrl" type="string" />
+        <field id="error" type="string" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/M3uLoader.brs" />
+</component>

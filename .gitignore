@@ -1,0 +1,20 @@
+# Local agent/editor settings
+.claude/
+
+# Build output
+*.zip
+KojoStream-sideload.zip
+KojoStream.zip
+
+# Captured/private stream test data
+seg.ts
+tmp_playlist.m3u
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Logs and temp files
+*.log
+tmp/
+temp/

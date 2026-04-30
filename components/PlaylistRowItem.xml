@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="PlaylistRowItem" extends="Group">
+    <interface>
+        <field id="itemContent" type="node" onChange="updateContent" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/PlaylistRowItem.brs" />
+    <children>
+        <Label
+            id="NameLabel"
+            translation="[20,8]"
+            width="1680"
+            height="36"
+            font="font:MediumBoldSystemFont"
+            color="0xFFFFFFFF" />
+        <Label
+            id="UrlLabel"
+            translation="[20,44]"
+            width="1680"
+            height="30"
+            font="font:SmallSystemFont"
+            color="0xAAAAAAFF" />
+    </children>
+</component>

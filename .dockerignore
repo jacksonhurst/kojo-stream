@@ -1,0 +1,8 @@
+.git
+.claude
+*.zip
+*.ts
+tmp_playlist.m3u
+__pycache__
+*.pyc
+*.log

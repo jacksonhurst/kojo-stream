@@ -1,0 +1,15 @@
+services:
+  kojostream-transcode:
+    image: kojostream-transcode:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.transcode
+    container_name: kojostream-transcode
+    restart: unless-stopped
+    ports:
+      - "8977:8977"
+    volumes:
+      - kojostream-transcode-cache:/cache
+
+volumes:
+  kojostream-transcode-cache:

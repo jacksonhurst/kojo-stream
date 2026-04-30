@@ -1,0 +1,20 @@
+title=KojoStream
+subtitle=M3U IPTV Player
+major_version=1
+minor_version=0
+build_version=1
+
+mm_icon_focus_hd=pkg:/images/channel-poster_hd.png
+mm_icon_focus_sd=pkg:/images/channel-poster_sd.png
+
+requires_audiometadata=true
+
+splash_screen_fhd=pkg:/images/splash_fhd.jpg
+splash_screen_hd=pkg:/images/splash_hd.jpg
+splash_screen_sd=pkg:/images/splash_sd.jpg
+splash_color=#1A1A2E
+splash_min_time=0
+
+ui_resolutions=fhd
+
+supports_input_launch=1

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="StreamProbeTask" extends="Task">
+    <interface>
+        <field id="probeUrl" type="string" />
+        <field id="userAgent" type="string" />
+        <field id="referrer" type="string" />
+        <field id="origin" type="string" />
+        <field id="cookie" type="string" />
+        <field id="report" type="string" />
+        <field id="error" type="string" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/tasks/StreamProbeTask.brs" />
+</component>

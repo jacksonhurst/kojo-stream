@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="SettingsScreen" extends="Group">
+    <interface>
+        <field id="visible" type="boolean" value="false" onChange="onVisibleChange" />
+        <field id="viewMode" type="string" value="grouped" alwaysNotify="true" />
+        <field id="transcodeServerUrl" type="string" value="" alwaysNotify="true" />
+    </interface>
+    <script type="text/brightscript" uri="pkg:/components/SettingsScreen.brs" />
+    <children>
+        <Rectangle
+            id="SettingsBackground"
+            width="1920"
+            height="1080"
+            color="0x1A1A2EFF" />
+
+        <Label
+            id="SettingsTitle"
+            translation="[100,40]"
+            width="800"
+            height="60"
+            text="Settings"
+            font="font:LargeBoldSystemFont"
+            color="0xE63946FF" />
+
+        <LayoutGroup
+            id="SettingsItems"
+            translation="[100,160]"
+            layoutDirection="vert"
+            itemSpacings="[20]">
+
+            <Group id="ViewModeGroup">
+                <Rectangle
+                    id="ViewModeHighlight"
+                    width="1720"
+                    height="70"
+                    color="0x333355FF" />
+                <Label
+                    id="ViewModeLabel"
+                    translation="[20,15]"
+                    width="800"
+                    height="40"
+                    text="Channel View Mode"
+                    font="font:MediumBoldSystemFont"
+                    color="0xFFFFFFFF" />
+                <Label
+                    id="ViewModeValue"
+                    translation="[1200,15]"
+                    width="500"
+                    height="40"
+                    text="Group by Category"
+                    font="font:MediumSystemFont"
+                    color="0xFFFF00FF"
+                    horizAlign="right" />
+            </Group>
+
+            <Group id="TranscodeServerGroup">
+                <Rectangle
+                    id="TranscodeServerHighlight"
+                    width="1720"
+                    height="70"
+                    color="0x333355FF"
+                    visible="false" />
+                <Label
+                    id="TranscodeServerLabel"
+                    translation="[20,15]"
+                    width="800"
+                    height="40"
+                    text="Transcode Server"
+                    font="font:MediumBoldSystemFont"
+                    color="0xFFFFFFFF" />
+                <Label
+                    id="TranscodeServerValue"
+                    translation="[820,15]"
+                    width="880"
+                    height="40"
+                    text="Off"
+                    font="font:MediumSystemFont"
+                    color="0xFFFF00FF"
+                    horizAlign="right" />
+            </Group>
+        </LayoutGroup>
+
+        <Label
+            id="SettingsHint"
+            translation="[100,1020]"
+            width="1720"
+            height="40"
+            text="OK = Select  |  Up/Down = Move  |  Back = Return"
+            font="font:SmallSystemFont"
+            color="0x888888FF"
+            horizAlign="center" />
+    </children>
+</component>
