@@ -187,16 +187,16 @@ The NVIDIA profile uses NVENC:
 
 ```text
 KOJO_VIDEO_ENCODER=h264_nvenc
-KOJO_NVENC_PRESET=p5
+KOJO_NVENC_PRESET=p7
 KOJO_NVENC_TUNE=hq
-KOJO_NVENC_CQ=18
-KOJO_VIDEO_BITRATE=8M
-KOJO_VIDEO_MAXRATE=10M
-KOJO_VIDEO_BUFSIZE=20M
-KOJO_AUDIO_BITRATE=160k
+KOJO_NVENC_CQ=16
+KOJO_VIDEO_BITRATE=14M
+KOJO_VIDEO_MAXRATE=20M
+KOJO_VIDEO_BUFSIZE=40M
+KOJO_AUDIO_BITRATE=192k
 ```
 
-NVENC is not mathematically lossless, and CPU x264 can still be more efficient at the same bitrate. The advantage of a GPU such as a Quadro P4000 is that it can encode live streams with very little CPU load, letting you use generous bitrate and quality settings for minimal visible loss.
+NVENC is not mathematically lossless, and CPU x264 can still be more efficient at the same bitrate. The advantage of a GPU such as a Quadro P4000 is that it can encode live streams with very little CPU load, letting you use generous bitrate and quality settings for minimal visible loss. The NVIDIA profile intentionally uses more bandwidth to preserve detail; if it still looks too compressed, try `KOJO_NVENC_CQ=14` and `KOJO_VIDEO_MAXRATE=25M`.
 
 ## Troubleshooting
 

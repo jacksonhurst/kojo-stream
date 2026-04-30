@@ -70,16 +70,16 @@ environment:
   NVIDIA_VISIBLE_DEVICES: all
   NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
   KOJO_VIDEO_ENCODER: h264_nvenc
-  KOJO_NVENC_PRESET: p5
+  KOJO_NVENC_PRESET: p7
   KOJO_NVENC_TUNE: hq
-  KOJO_NVENC_CQ: "18"
-  KOJO_VIDEO_BITRATE: 8M
-  KOJO_VIDEO_MAXRATE: 10M
-  KOJO_VIDEO_BUFSIZE: 20M
-  KOJO_AUDIO_BITRATE: 160k
+  KOJO_NVENC_CQ: "16"
+  KOJO_VIDEO_BITRATE: 14M
+  KOJO_VIDEO_MAXRATE: 20M
+  KOJO_VIDEO_BUFSIZE: 40M
+  KOJO_AUDIO_BITRATE: 192k
 ```
 
-NVENC is much easier on the CPU and is a good fit for live TV. It is not mathematically lossless, but with a healthy bitrate and `cq` around `18-20`, quality loss should be small for typical IPTV streams.
+NVENC is much easier on the CPU and is a good fit for live TV. It is not mathematically lossless, but the NVIDIA stack is tuned to spend bitrate for quality: `cq=16`, `14M` target, and `20M` max. If the stream still looks too compressed, try `KOJO_NVENC_CQ=14` and `KOJO_VIDEO_MAXRATE=25M`. If bandwidth matters more than quality, try `cq=18-20` and `maxrate=10M-14M`.
 
 To confirm the container can see NVENC:
 
