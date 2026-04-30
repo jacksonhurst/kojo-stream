@@ -23,6 +23,7 @@ services:
       KOJO_X264_CRF: "19"
       KOJO_VIDEO_MAXRATE: 10M
       KOJO_VIDEO_BUFSIZE: 20M
+      KOJO_H264_LEVEL: "4.2"
       KOJO_AUDIO_BITRATE: 160k
       KOJO_SINGLE_ACTIVE_STREAM: "true"
       KOJO_STARTUP_RETRIES: "3"
@@ -52,12 +53,15 @@ environment:
   KOJO_X264_CRF: "19"
   KOJO_VIDEO_MAXRATE: 10M
   KOJO_VIDEO_BUFSIZE: 20M
+  KOJO_H264_LEVEL: "4.2"
   KOJO_AUDIO_BITRATE: 160k
   KOJO_SINGLE_ACTIVE_STREAM: "true"
   KOJO_STARTUP_RETRIES: "3"
 ```
 
 Lower CRF means higher quality and larger bitrate. Good CPU values are usually `18` to `21`. Slower presets such as `medium` can look slightly better at the same bitrate, but use more CPU.
+
+`KOJO_H264_LEVEL=4.2` is the default because some 1080p live channels, especially 60 fps channels, exceed H.264 level 4.1 limits and make NVENC fail with `Invalid Level`.
 
 `KOJO_SINGLE_ACTIVE_STREAM` is on by default. When Roku starts a different transcoded channel, the proxy stops older FFmpeg sessions first. This helps providers that reject multiple simultaneous streams from the same account/token.
 
@@ -84,6 +88,7 @@ environment:
   KOJO_VIDEO_BITRATE: 14M
   KOJO_VIDEO_MAXRATE: 20M
   KOJO_VIDEO_BUFSIZE: 40M
+  KOJO_H264_LEVEL: "4.2"
   KOJO_AUDIO_BITRATE: 192k
   KOJO_SINGLE_ACTIVE_STREAM: "true"
   KOJO_STARTUP_RETRIES: "3"
@@ -124,6 +129,7 @@ services:
       KOJO_X264_CRF: "19"
       KOJO_VIDEO_MAXRATE: 10M
       KOJO_VIDEO_BUFSIZE: 20M
+      KOJO_H264_LEVEL: "4.2"
       KOJO_AUDIO_BITRATE: 160k
       KOJO_SINGLE_ACTIVE_STREAM: "true"
       KOJO_STARTUP_RETRIES: "3"

@@ -198,7 +198,7 @@ class TranscodeSession:
                 "-profile:v",
                 "high",
                 "-level:v",
-                "4.1",
+                self.settings["h264_level"],
                 "-pix_fmt",
                 "yuv420p",
                 "-g",
@@ -219,7 +219,7 @@ class TranscodeSession:
             "-profile:v",
             "high",
             "-level:v",
-            "4.1",
+            self.settings["h264_level"],
             "-pix_fmt",
             "yuv420p",
             "-maxrate",
@@ -452,6 +452,7 @@ def build_transcode_settings(args):
         "video_bitrate": args.video_bitrate,
         "video_maxrate": args.video_maxrate,
         "video_bufsize": args.video_bufsize,
+        "h264_level": args.h264_level,
         "audio_bitrate": args.audio_bitrate,
         "hls_time": args.hls_time,
         "hls_list_size": args.hls_list_size,
@@ -495,6 +496,7 @@ def main():
     parser.add_argument("--video-bitrate", default=os.getenv("KOJO_VIDEO_BITRATE", "8M"))
     parser.add_argument("--video-maxrate", default=os.getenv("KOJO_VIDEO_MAXRATE", "10M"))
     parser.add_argument("--video-bufsize", default=os.getenv("KOJO_VIDEO_BUFSIZE", "20M"))
+    parser.add_argument("--h264-level", default=os.getenv("KOJO_H264_LEVEL", "4.2"))
     parser.add_argument("--audio-bitrate", default=os.getenv("KOJO_AUDIO_BITRATE", "160k"))
     parser.add_argument("--hls-time", default=os.getenv("KOJO_HLS_TIME", "2"))
     parser.add_argument("--hls-list-size", default=os.getenv("KOJO_HLS_LIST_SIZE", "8"))
