@@ -29,12 +29,16 @@ class TranscodeSession:
         self.process = None
         self.lock = threading.Lock()
         self.last_access = time.time()
+        self.closed = False
 
     def ensure_running(self):
         with self.lock:
+            if self.closed:
+                return False
+
             self.last_access = time.time()
             if self.process is not None and self.process.poll() is None:
-                return
+                return True
 
             self.work_dir.mkdir(parents=True, exist_ok=True)
             for old_file in self.work_dir.glob("*"):
@@ -42,6 +46,7 @@ class TranscodeSession:
                     old_file.unlink(missing_ok=True)
 
             cmd = self._build_ffmpeg_command()
+            print(f"Starting FFmpeg session {self.session_id}", flush=True)
             log_file = self.log_path.open("ab")
             log_file.write(("\n\n--- starting ffmpeg " + time.ctime() + " ---\n").encode("utf-8"))
             log_file.write((" ".join(cmd) + "\n").encode("utf-8"))
@@ -53,9 +58,12 @@ class TranscodeSession:
                 stderr=log_file,
                 cwd=str(self.work_dir),
             )
+            return True
 
-    def stop(self):
+    def stop(self, final=False):
         with self.lock:
+            if final:
+                self.closed = True
             if self.process is not None and self.process.poll() is None:
                 self.process.terminate()
                 try:
@@ -64,16 +72,23 @@ class TranscodeSession:
                     self.process.kill()
             self.process = None
 
+    def is_closed(self):
+        with self.lock:
+            return self.closed
+
     def wait_for_playlist(self, timeout_seconds=90):
         deadline = time.time() + timeout_seconds
         while time.time() < deadline:
+            if self.is_closed():
+                return False
             if self.playlist_path.exists():
                 text = self.playlist_path.read_text("utf-8", errors="ignore")
                 if ".ts" in text:
                     return True
             if self.process is not None and self.process.poll() is not None:
                 time.sleep(2)
-                self.ensure_running()
+                if not self.ensure_running():
+                    return False
             time.sleep(0.25)
         return False
 
@@ -254,7 +269,7 @@ class SessionManager:
                 f"Stopping previous transcode session {session_id} before starting {active_session.session_id}",
                 flush=True,
             )
-            session.stop()
+            session.stop(final=True)
             shutil.rmtree(session.work_dir, ignore_errors=True)
 
     def cleanup_loop(self):
@@ -273,7 +288,7 @@ class SessionManager:
 
         for session_id, session in stale_sessions:
             print(f"Cleaning up inactive transcode session {session_id}", flush=True)
-            session.stop()
+            session.stop(final=True)
             shutil.rmtree(session.work_dir, ignore_errors=True)
 
 
@@ -319,8 +334,14 @@ class ProxyHandler(BaseHTTPRequestHandler):
             flush=True,
         )
         self.manager.activate_session(session)
-        session.ensure_running()
+        if not session.ensure_running():
+            self.send_error(HTTPStatus.CONFLICT, "Transcode session was replaced by a newer channel request.")
+            return
         if not session.wait_for_playlist():
+            if session.is_closed():
+                print(f"HLS request session={session.session_id} closed before playlist was ready", flush=True)
+                self.send_error(HTTPStatus.CONFLICT, "Transcode session was replaced by a newer channel request.")
+                return
             log_tail = session.read_log_tail()
             if log_tail:
                 print("FFmpeg did not produce an HLS playlist. Recent log output:", flush=True)
@@ -333,6 +354,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
 
         playlist = session.playlist_path.read_text("utf-8", errors="ignore")
         playlist = self.rewrite_playlist(playlist, session.session_id)
+        print(f"HLS playlist ready session={session.session_id}", flush=True)
         self.send_text(playlist, "application/vnd.apple.mpegurl")
 
     def handle_session_file(self, parsed):
