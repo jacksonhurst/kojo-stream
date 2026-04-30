@@ -25,6 +25,7 @@ services:
       KOJO_VIDEO_BUFSIZE: 20M
       KOJO_AUDIO_BITRATE: 160k
       KOJO_SINGLE_ACTIVE_STREAM: "true"
+      KOJO_STARTUP_RETRIES: "3"
     volumes:
       - kojostream-transcode-cache:/cache
 
@@ -53,11 +54,14 @@ environment:
   KOJO_VIDEO_BUFSIZE: 20M
   KOJO_AUDIO_BITRATE: 160k
   KOJO_SINGLE_ACTIVE_STREAM: "true"
+  KOJO_STARTUP_RETRIES: "3"
 ```
 
 Lower CRF means higher quality and larger bitrate. Good CPU values are usually `18` to `21`. Slower presets such as `medium` can look slightly better at the same bitrate, but use more CPU.
 
 `KOJO_SINGLE_ACTIVE_STREAM` is on by default. When Roku starts a different transcoded channel, the proxy stops older FFmpeg sessions first. This helps providers that reject multiple simultaneous streams from the same account/token.
+
+`KOJO_STARTUP_RETRIES` controls how many times the proxy restarts FFmpeg if it exits before producing an HLS playlist. Early FFmpeg exits are logged with the exit code and recent FFmpeg output.
 
 ## NVIDIA NVENC
 
@@ -82,6 +86,7 @@ environment:
   KOJO_VIDEO_BUFSIZE: 40M
   KOJO_AUDIO_BITRATE: 192k
   KOJO_SINGLE_ACTIVE_STREAM: "true"
+  KOJO_STARTUP_RETRIES: "3"
 ```
 
 NVENC is much easier on the CPU and is a good fit for live TV. It is not mathematically lossless, but the NVIDIA stack is tuned to spend bitrate for quality: `cq=16`, `14M` target, and `20M` max. If the stream still looks too compressed, try `KOJO_NVENC_CQ=14` and `KOJO_VIDEO_MAXRATE=25M`. If bandwidth matters more than quality, try `cq=18-20` and `maxrate=10M-14M`.
@@ -121,6 +126,7 @@ services:
       KOJO_VIDEO_BUFSIZE: 20M
       KOJO_AUDIO_BITRATE: 160k
       KOJO_SINGLE_ACTIVE_STREAM: "true"
+      KOJO_STARTUP_RETRIES: "3"
     volumes:
       - kojostream-transcode-cache:/cache
 

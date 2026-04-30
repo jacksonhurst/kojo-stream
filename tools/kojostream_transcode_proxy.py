@@ -30,6 +30,7 @@ class TranscodeSession:
         self.lock = threading.Lock()
         self.last_access = time.time()
         self.closed = False
+        self.start_attempts = 0
 
     def ensure_running(self):
         with self.lock:
@@ -46,7 +47,8 @@ class TranscodeSession:
                     old_file.unlink(missing_ok=True)
 
             cmd = self._build_ffmpeg_command()
-            print(f"Starting FFmpeg session {self.session_id}", flush=True)
+            self.start_attempts += 1
+            print(f"Starting FFmpeg session {self.session_id} attempt={self.start_attempts}", flush=True)
             log_file = self.log_path.open("ab")
             log_file.write(("\n\n--- starting ffmpeg " + time.ctime() + " ---\n").encode("utf-8"))
             log_file.write((" ".join(cmd) + "\n").encode("utf-8"))
@@ -85,7 +87,14 @@ class TranscodeSession:
                 text = self.playlist_path.read_text("utf-8", errors="ignore")
                 if ".ts" in text:
                     return True
-            if self.process is not None and self.process.poll() is not None:
+            if self.process is not None:
+                exit_code = self.process.poll()
+            else:
+                exit_code = None
+            if exit_code is not None:
+                self.report_process_exit(exit_code)
+                if self.start_attempts >= parse_int(self.settings["startup_retries"], 3):
+                    return False
                 time.sleep(2)
                 if not self.ensure_running():
                     return False
@@ -97,6 +106,16 @@ class TranscodeSession:
             return ""
         text = self.log_path.read_text("utf-8", errors="ignore")
         return text[-max_chars:]
+
+    def report_process_exit(self, exit_code):
+        print(
+            f"FFmpeg session {self.session_id} exited before playlist was ready. exit_code={exit_code}",
+            flush=True,
+        )
+        log_tail = self.read_log_tail()
+        if log_tail:
+            print(f"Recent FFmpeg output for session {self.session_id}:", flush=True)
+            print(log_tail, flush=True)
 
     def _build_ffmpeg_command(self):
         cmd = [
@@ -440,6 +459,7 @@ def build_transcode_settings(args):
         "keyframe_seconds": args.keyframe_seconds,
         "gop_size": args.gop_size,
         "single_active_stream": parse_bool(args.single_active_stream),
+        "startup_retries": args.startup_retries,
     }
 
 
@@ -447,6 +467,13 @@ def parse_bool(value):
     if value is None:
         return False
     return value.strip().lower() in ("1", "true", "yes", "y", "on")
+
+
+def parse_int(value, default_value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default_value
 
 
 def main():
@@ -478,6 +505,11 @@ def main():
         "--single-active-stream",
         default=os.getenv("KOJO_SINGLE_ACTIVE_STREAM", "true"),
         help="Stop other active FFmpeg sessions when a new channel starts. Helps IPTV providers with one-stream limits.",
+    )
+    parser.add_argument(
+        "--startup-retries",
+        default=os.getenv("KOJO_STARTUP_RETRIES", "3"),
+        help="How many times to restart FFmpeg if it exits before producing an HLS playlist.",
     )
     args = parser.parse_args()
 

@@ -180,6 +180,7 @@ KOJO_VIDEO_MAXRATE=10M
 KOJO_VIDEO_BUFSIZE=20M
 KOJO_AUDIO_BITRATE=160k
 KOJO_SINGLE_ACTIVE_STREAM=true
+KOJO_STARTUP_RETRIES=3
 ```
 
 Lower `KOJO_X264_CRF` means higher quality and more bitrate. Good live-TV values are usually `18` to `21`.
@@ -196,11 +197,14 @@ KOJO_VIDEO_MAXRATE=20M
 KOJO_VIDEO_BUFSIZE=40M
 KOJO_AUDIO_BITRATE=192k
 KOJO_SINGLE_ACTIVE_STREAM=true
+KOJO_STARTUP_RETRIES=3
 ```
 
 NVENC is not mathematically lossless, and CPU x264 can still be more efficient at the same bitrate. The advantage of a GPU such as a Quadro P4000 is that it can encode live streams with very little CPU load, letting you use generous bitrate and quality settings for minimal visible loss. The NVIDIA profile intentionally uses more bandwidth to preserve detail; if it still looks too compressed, try `KOJO_NVENC_CQ=14` and `KOJO_VIDEO_MAXRATE=25M`.
 
 `KOJO_SINGLE_ACTIVE_STREAM=true` stops older FFmpeg sessions when a new channel starts. This is intentionally on by default because many IPTV providers limit an account/token to one active stream, and leaving the previous channel transcoding in the background can make the next channel fail.
+
+`KOJO_STARTUP_RETRIES=3` controls how many times the proxy restarts FFmpeg if it exits before producing a playlist. The proxy prints the FFmpeg exit code and recent FFmpeg output for those early failures.
 
 ## Troubleshooting
 

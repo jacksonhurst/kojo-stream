@@ -21,6 +21,7 @@ services:
       KOJO_VIDEO_BUFSIZE: 40M
       KOJO_AUDIO_BITRATE: 192k
       KOJO_SINGLE_ACTIVE_STREAM: "true"
+      KOJO_STARTUP_RETRIES: "3"
     deploy:
       resources:
         reservations:
