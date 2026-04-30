@@ -16,12 +16,13 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 
 
 class TranscodeSession:
-    def __init__(self, session_id, source_url, headers, root_dir, ffmpeg_path):
+    def __init__(self, session_id, source_url, headers, root_dir, ffmpeg_path, settings):
         self.session_id = session_id
         self.source_url = source_url
         self.headers = headers
         self.root_dir = root_dir
         self.ffmpeg_path = ffmpeg_path
+        self.settings = settings
         self.work_dir = root_dir / session_id
         self.playlist_path = self.work_dir / "stream.m3u8"
         self.log_path = self.work_dir / "ffmpeg.log"
@@ -108,34 +109,14 @@ class TranscodeSession:
         if header_lines:
             cmd.extend(["-headers", "\r\n".join(header_lines) + "\r\n"])
 
+        cmd.extend(["-i", self.source_url, "-map", "0:v:0", "-map", "0:a:0?"])
+        cmd.extend(self._build_video_args())
         cmd.extend(
             [
-                "-i",
-                self.source_url,
-                "-map",
-                "0:v:0",
-                "-map",
-                "0:a:0?",
-                "-c:v",
-                "libx264",
-                "-preset",
-                "veryfast",
-                "-tune",
-                "zerolatency",
-                "-profile:v",
-                "high",
-                "-level:v",
-                "4.1",
-                "-pix_fmt",
-                "yuv420p",
-                "-x264-params",
-                "keyint=60:min-keyint=60:scenecut=0:repeat-headers=1",
-                "-force_key_frames",
-                "expr:gte(t,n_forced*2)",
                 "-c:a",
                 "aac",
                 "-b:a",
-                "128k",
+                self.settings["audio_bitrate"],
                 "-ac",
                 "2",
                 "-ar",
@@ -143,11 +124,11 @@ class TranscodeSession:
                 "-f",
                 "hls",
                 "-hls_time",
-                "2",
+                self.settings["hls_time"],
                 "-hls_list_size",
-                "8",
+                self.settings["hls_list_size"],
                 "-hls_delete_threshold",
-                "4",
+                self.settings["hls_delete_threshold"],
                 "-hls_flags",
                 "delete_segments+independent_segments+program_date_time",
                 "-hls_segment_filename",
@@ -157,11 +138,77 @@ class TranscodeSession:
         )
         return cmd
 
+    def _build_video_args(self):
+        encoder = self.settings["video_encoder"].lower()
+        keyframe_seconds = self.settings["keyframe_seconds"]
+        force_keyframes = "expr:gte(t,n_forced*" + keyframe_seconds + ")"
+
+        if encoder in ("h264_nvenc", "nvenc"):
+            return [
+                "-c:v",
+                "h264_nvenc",
+                "-preset",
+                self.settings["nvenc_preset"],
+                "-tune",
+                self.settings["nvenc_tune"],
+                "-rc",
+                "vbr",
+                "-cq",
+                self.settings["nvenc_cq"],
+                "-b:v",
+                self.settings["video_bitrate"],
+                "-maxrate",
+                self.settings["video_maxrate"],
+                "-bufsize",
+                self.settings["video_bufsize"],
+                "-profile:v",
+                "high",
+                "-level:v",
+                "4.1",
+                "-pix_fmt",
+                "yuv420p",
+                "-g",
+                self.settings["gop_size"],
+                "-forced-idr",
+                "1",
+                "-force_key_frames",
+                force_keyframes,
+            ]
+
+        args = [
+            "-c:v",
+            "libx264",
+            "-preset",
+            self.settings["x264_preset"],
+            "-crf",
+            self.settings["x264_crf"],
+            "-profile:v",
+            "high",
+            "-level:v",
+            "4.1",
+            "-pix_fmt",
+            "yuv420p",
+            "-maxrate",
+            self.settings["video_maxrate"],
+            "-bufsize",
+            self.settings["video_bufsize"],
+            "-x264-params",
+            "keyint=" + self.settings["gop_size"] + ":min-keyint=" + self.settings["gop_size"] + ":scenecut=0:repeat-headers=1",
+            "-force_key_frames",
+            force_keyframes,
+        ]
+
+        if self.settings["x264_tune"]:
+            args.extend(["-tune", self.settings["x264_tune"]])
+
+        return args
+
 
 class SessionManager:
-    def __init__(self, ffmpeg_path, root_dir):
+    def __init__(self, ffmpeg_path, root_dir, settings):
         self.ffmpeg_path = ffmpeg_path
         self.root_dir = root_dir
+        self.settings = settings
         self.sessions = {}
         self.lock = threading.Lock()
         root_dir.mkdir(parents=True, exist_ok=True)
@@ -184,6 +231,7 @@ class SessionManager:
                     headers,
                     self.root_dir,
                     self.ffmpeg_path,
+                    self.settings,
                 )
                 self.sessions[session_id] = session
             return session
@@ -324,6 +372,27 @@ def first_query_value(query, key):
     return values[0]
 
 
+def build_transcode_settings(args):
+    return {
+        "video_encoder": args.video_encoder,
+        "x264_preset": args.x264_preset,
+        "x264_crf": args.x264_crf,
+        "x264_tune": args.x264_tune,
+        "nvenc_preset": args.nvenc_preset,
+        "nvenc_tune": args.nvenc_tune,
+        "nvenc_cq": args.nvenc_cq,
+        "video_bitrate": args.video_bitrate,
+        "video_maxrate": args.video_maxrate,
+        "video_bufsize": args.video_bufsize,
+        "audio_bitrate": args.audio_bitrate,
+        "hls_time": args.hls_time,
+        "hls_list_size": args.hls_list_size,
+        "hls_delete_threshold": args.hls_delete_threshold,
+        "keyframe_seconds": args.keyframe_seconds,
+        "gop_size": args.gop_size,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="KojoStream FFmpeg HLS transcode proxy")
     parser.add_argument("--host", default="0.0.0.0")
@@ -333,17 +402,35 @@ def main():
         "--work-dir",
         default=str(Path(tempfile.gettempdir()) / "kojostream-transcode-proxy"),
     )
+    parser.add_argument("--video-encoder", default=os.getenv("KOJO_VIDEO_ENCODER", "libx264"))
+    parser.add_argument("--x264-preset", default=os.getenv("KOJO_X264_PRESET", "fast"))
+    parser.add_argument("--x264-crf", default=os.getenv("KOJO_X264_CRF", "19"))
+    parser.add_argument("--x264-tune", default=os.getenv("KOJO_X264_TUNE", ""))
+    parser.add_argument("--nvenc-preset", default=os.getenv("KOJO_NVENC_PRESET", "p5"))
+    parser.add_argument("--nvenc-tune", default=os.getenv("KOJO_NVENC_TUNE", "hq"))
+    parser.add_argument("--nvenc-cq", default=os.getenv("KOJO_NVENC_CQ", "19"))
+    parser.add_argument("--video-bitrate", default=os.getenv("KOJO_VIDEO_BITRATE", "8M"))
+    parser.add_argument("--video-maxrate", default=os.getenv("KOJO_VIDEO_MAXRATE", "10M"))
+    parser.add_argument("--video-bufsize", default=os.getenv("KOJO_VIDEO_BUFSIZE", "20M"))
+    parser.add_argument("--audio-bitrate", default=os.getenv("KOJO_AUDIO_BITRATE", "160k"))
+    parser.add_argument("--hls-time", default=os.getenv("KOJO_HLS_TIME", "2"))
+    parser.add_argument("--hls-list-size", default=os.getenv("KOJO_HLS_LIST_SIZE", "8"))
+    parser.add_argument("--hls-delete-threshold", default=os.getenv("KOJO_HLS_DELETE_THRESHOLD", "4"))
+    parser.add_argument("--keyframe-seconds", default=os.getenv("KOJO_KEYFRAME_SECONDS", "2"))
+    parser.add_argument("--gop-size", default=os.getenv("KOJO_GOP_SIZE", "60"))
     args = parser.parse_args()
 
     if shutil.which(args.ffmpeg) is None and not Path(args.ffmpeg).exists():
         raise SystemExit("ffmpeg was not found. Install FFmpeg and make sure ffmpeg is on PATH.")
 
-    manager = SessionManager(args.ffmpeg, Path(args.work_dir))
+    settings = build_transcode_settings(args)
+    manager = SessionManager(args.ffmpeg, Path(args.work_dir), settings)
     ProxyHandler.manager = manager
 
     server = ThreadingHTTPServer((args.host, args.port), ProxyHandler)
     print(f"KojoStream transcode proxy listening on http://{args.host}:{args.port}")
     print("Set the Roku app Transcode Server setting to this PC's LAN URL, for example http://192.168.1.25:8977")
+    print("Transcode settings: " + json.dumps(settings, sort_keys=True))
     server.serve_forever()
 
 

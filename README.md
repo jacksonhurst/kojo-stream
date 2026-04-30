@@ -40,6 +40,14 @@ docker-compose.transcode.yml
 
 More details are in `docs/transcode-proxy-docker.md`.
 
+For NVIDIA GPU encoding, use:
+
+```text
+docker-compose.transcode.nvidia.yml
+```
+
+The NVIDIA stack expects the Docker host to have working NVIDIA drivers and the NVIDIA Container Toolkit.
+
 ## Roku Setting
 
 In the Roku app, set:

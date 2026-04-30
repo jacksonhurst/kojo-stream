@@ -17,6 +17,13 @@ services:
     restart: unless-stopped
     ports:
       - "8977:8977"
+    environment:
+      KOJO_VIDEO_ENCODER: libx264
+      KOJO_X264_PRESET: fast
+      KOJO_X264_CRF: "19"
+      KOJO_VIDEO_MAXRATE: 10M
+      KOJO_VIDEO_BUFSIZE: 20M
+      KOJO_AUDIO_BITRATE: 160k
     volumes:
       - kojostream-transcode-cache:/cache
 
@@ -31,6 +38,56 @@ docker-compose.transcode.yml
 ```
 
 Portainer needs access to the Docker build context. The easiest path is a Git-backed stack pointed at this repository. If you use Portainer's web editor without a Git repository, prebuild the image on the Docker host first, then deploy a stack that references `kojostream-transcode:latest`.
+
+## Quality Settings
+
+The default Docker stack uses higher-quality CPU encoding:
+
+```yaml
+environment:
+  KOJO_VIDEO_ENCODER: libx264
+  KOJO_X264_PRESET: fast
+  KOJO_X264_CRF: "19"
+  KOJO_VIDEO_MAXRATE: 10M
+  KOJO_VIDEO_BUFSIZE: 20M
+  KOJO_AUDIO_BITRATE: 160k
+```
+
+Lower CRF means higher quality and larger bitrate. Good CPU values are usually `18` to `21`. Slower presets such as `medium` can look slightly better at the same bitrate, but use more CPU.
+
+## NVIDIA NVENC
+
+If the Docker host has an NVIDIA GPU such as a Quadro P4000 and the NVIDIA Container Toolkit is installed, use:
+
+```text
+docker-compose.transcode.nvidia.yml
+```
+
+That stack uses:
+
+```yaml
+environment:
+  NVIDIA_VISIBLE_DEVICES: all
+  NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
+  KOJO_VIDEO_ENCODER: h264_nvenc
+  KOJO_NVENC_PRESET: p5
+  KOJO_NVENC_TUNE: hq
+  KOJO_NVENC_CQ: "18"
+  KOJO_VIDEO_BITRATE: 8M
+  KOJO_VIDEO_MAXRATE: 10M
+  KOJO_VIDEO_BUFSIZE: 20M
+  KOJO_AUDIO_BITRATE: 160k
+```
+
+NVENC is much easier on the CPU and is a good fit for live TV. It is not mathematically lossless, but with a healthy bitrate and `cq` around `18-20`, quality loss should be small for typical IPTV streams.
+
+To confirm the container can see NVENC:
+
+```sh
+docker exec kojostream-transcode ffmpeg -hide_banner -encoders | grep nvenc
+```
+
+If no NVENC encoders appear, check the host's NVIDIA driver and NVIDIA Container Toolkit installation.
 
 ## Manual Docker Build
 
@@ -51,6 +108,13 @@ services:
     restart: unless-stopped
     ports:
       - "8977:8977"
+    environment:
+      KOJO_VIDEO_ENCODER: libx264
+      KOJO_X264_PRESET: fast
+      KOJO_X264_CRF: "19"
+      KOJO_VIDEO_MAXRATE: 10M
+      KOJO_VIDEO_BUFSIZE: 20M
+      KOJO_AUDIO_BITRATE: 160k
     volumes:
       - kojostream-transcode-cache:/cache
 
