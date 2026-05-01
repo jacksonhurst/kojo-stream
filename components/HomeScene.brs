@@ -1358,9 +1358,7 @@ sub onXmltvGuideLoaded()
     end if
 
     m.epgByChannel = parsed
-    applyGuideDataToVisibleRows()
-    row = m.nodes.RowList.itemFocused
-    if row <> invalid and row >= 0 then updateCategoryLabel(row)
+    applyGuideDataToVisibleRows(true)
     m.nodes.GuideTickTimer.control = "start"
     m.nodes.XmltvRefreshTimer.control = "start"
     print "XMLTV guide loaded keys: "; m.epgByChannel.count()
@@ -1377,9 +1375,7 @@ end sub
 
 sub onGuideTick()
     if m.epgByChannel = invalid or type(m.epgByChannel) <> "roAssociativeArray" then return
-    applyGuideDataToVisibleRows()
-    row = m.nodes.RowList.itemFocused
-    if row <> invalid and row >= 0 then updateCategoryLabel(row)
+    applyGuideDataToVisibleRows(true)
 end sub
 
 sub onXmltvRefreshTimer()
@@ -1394,10 +1390,12 @@ sub stopXmltvTimers()
     m.nodes.XmltvRefreshTimer.control = "stop"
 end sub
 
-sub applyGuideDataToVisibleRows()
+sub applyGuideDataToVisibleRows(preserveFocus as boolean)
     if m.content = invalid then return
     rowCount = m.content.getChildCount()
     if rowCount = 0 then return
+    focusRow = -1
+    if preserveFocus then focusRow = currentChannelFocusRow()
 
     for i = 0 to rowCount - 1
         ch = m.content.getChild(i)
@@ -1421,6 +1419,32 @@ sub applyGuideDataToVisibleRows()
     end for
 
     m.nodes.RowList.content = m.content
+    if preserveFocus then restoreChannelFocusRow(focusRow)
+end sub
+
+function currentChannelFocusRow() as integer
+    if m.content = invalid then return -1
+    rowCount = m.content.getChildCount()
+    if rowCount = 0 then return -1
+
+    row = m.state.lastRow
+    if row = invalid or row < 0 then row = m.nodes.RowList.itemFocused
+    if row = invalid or row < 0 then row = 0
+    if row >= rowCount then row = rowCount - 1
+
+    return row
+end function
+
+sub restoreChannelFocusRow(row as integer)
+    if row < 0 then return
+    if m.content = invalid then return
+
+    rowCount = m.content.getChildCount()
+    if rowCount = 0 then return
+    if row >= rowCount then row = rowCount - 1
+
+    m.nodes.RowList.jumpToItem = row
+    updateCategoryLabel(row)
 end sub
 
 function lookupEpgForChannel(ch as object) as object
@@ -1832,7 +1856,7 @@ sub renderContent(sourceContent as object)
     m.nodes.Labels.Category.text = "Channels"
     m.nodes.Labels.Category2.text = ""
 
-    applyGuideDataToVisibleRows()
+    applyGuideDataToVisibleRows(false)
     print "Content loaded: "; channels; " channels in vertical list"
 end sub
 
@@ -1860,7 +1884,7 @@ sub filterContent(term)
             end if
         end for
     end for
-    applyGuideDataToVisibleRows()
+    applyGuideDataToVisibleRows(false)
     m.nodes.RowList.content = m.content
     if count > 0 then
         m.nodes.Labels.ChannelCount.text = "Results: " + count.toStr()
