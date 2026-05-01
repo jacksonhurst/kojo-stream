@@ -58,6 +58,8 @@ sub init()
     m.guideWindowSeconds = 7200
     m.guideRows = []
     createGuideGridNodes()
+    m.fastScrollKey = ""
+    m.fastScrollTicks = 0
 
     m.nodes.Video.enableUI = false
     m.nodes.Video.loop = true
@@ -121,6 +123,19 @@ sub init()
     m.forcePlayTimer.repeat = false
     m.forcePlayTimer.observeField("fire", "forcePlayVideo")
     m.top.appendChild(m.forcePlayTimer)
+
+    ' Long-press channel scrolling starts as normal one-step movement, then ramps up.
+    m.fastScrollDelayTimer = createObject("roSGNode", "Timer")
+    m.fastScrollDelayTimer.duration = 0.45
+    m.fastScrollDelayTimer.repeat = false
+    m.fastScrollDelayTimer.observeField("fire", "beginFastChannelScroll")
+    m.top.appendChild(m.fastScrollDelayTimer)
+
+    m.fastScrollTimer = createObject("roSGNode", "Timer")
+    m.fastScrollTimer.duration = 0.12
+    m.fastScrollTimer.repeat = true
+    m.fastScrollTimer.observeField("fire", "continueFastChannelScroll")
+    m.top.appendChild(m.fastScrollTimer)
 
     ' Set up PlaylistManager observer
     m.nodes.PlaylistManager.observeField("selectedUrl", "onPlaylistSelected")
@@ -447,6 +462,7 @@ end sub
 
 sub showScreen(screen as string)
     m.currentScreen = screen
+    stopFastChannelScroll()
     m.top.setFocus(true)
     if screen <> "main" then hidePlaybackStatusOverlay()
     if screen = "main" then
@@ -539,6 +555,7 @@ end sub
 sub updateCategoryLabel(row)
     totalRows = m.content.getChildCount()
     if totalRows = 0 then return
+    if row < 0 or row >= totalRows then return
     focusedItem = m.content.getChild(row)
     if focusedItem = invalid then
         m.nodes.Labels.Category.text = ""
@@ -550,6 +567,88 @@ sub updateCategoryLabel(row)
     m.nodes.Labels.Category2.text = ""
     m.state.lastRow = row
     updateGuidePanelForFocusedItem()
+end sub
+
+sub beginFastChannelScroll()
+    if m.fastScrollKey = "" then return
+    m.fastScrollTicks = 0
+    m.fastScrollTimer.control = "start"
+end sub
+
+sub continueFastChannelScroll()
+    if m.fastScrollKey = "" then
+        stopFastChannelScroll()
+        return
+    end if
+
+    m.fastScrollTicks++
+    scrollFocusedChannel(m.fastScrollKey, fastChannelScrollStep())
+end sub
+
+function startChannelListScroll(key as string) as boolean
+    if key <> "up" and key <> "down" then return false
+    if m.content = invalid then return true
+    if m.content.getChildCount() = 0 then return true
+
+    if m.fastScrollKey <> key then
+        stopFastChannelScroll()
+        m.fastScrollKey = key
+        m.fastScrollTicks = 0
+        scrollFocusedChannel(key, 1)
+        m.fastScrollDelayTimer.control = "start"
+    end if
+
+    return true
+end function
+
+function stopFastChannelScrollForKey(key as string) as boolean
+    if m.fastScrollKey = key then
+        stopFastChannelScroll()
+        return true
+    end if
+    return false
+end function
+
+sub stopFastChannelScroll()
+    if m.fastScrollDelayTimer <> invalid then m.fastScrollDelayTimer.control = "stop"
+    if m.fastScrollTimer <> invalid then m.fastScrollTimer.control = "stop"
+    m.fastScrollKey = ""
+    m.fastScrollTicks = 0
+end sub
+
+function fastChannelScrollStep() as integer
+    if m.fastScrollTicks < 8 then return 2
+    if m.fastScrollTicks < 18 then return 5
+    return 10
+end function
+
+sub scrollFocusedChannel(key as string, stepSize as integer)
+    if m.content = invalid then return
+    totalRows = m.content.getChildCount()
+    if totalRows <= 0 then return
+
+    currentRow = m.state.lastRow
+    if currentRow = invalid or currentRow < 0 then currentRow = m.nodes.RowList.itemFocused
+    if currentRow = invalid or currentRow < 0 then currentRow = 0
+    if currentRow >= totalRows then currentRow = totalRows - 1
+
+    nextRow = currentRow
+    if key = "up" then
+        nextRow = currentRow - stepSize
+    else if key = "down" then
+        nextRow = currentRow + stepSize
+    end if
+
+    if nextRow < 0 then nextRow = 0
+    if nextRow >= totalRows then nextRow = totalRows - 1
+
+    if nextRow = currentRow then
+        stopFastChannelScroll()
+        return
+    end if
+
+    m.nodes.RowList.jumpToItem = nextRow
+    updateCategoryLabel(nextRow)
 end sub
 
 ' --- Channel playback ---
@@ -595,6 +694,7 @@ function playbackItemsMatch(currentItem as object, selectedItem as object) as bo
 end function
 
 sub setFullScreen(state)
+    stopFastChannelScroll()
     m.state.isFullScreen = state
     nodes = m.nodes
     nodes.RowList.visible = not state
@@ -1845,7 +1945,10 @@ end sub
 ' --- Key event handler ---
 
 function onKeyEvent(key, press) as boolean
-    if not press then return false
+    if not press then
+        if key = "up" or key = "down" then return stopFastChannelScrollForKey(key)
+        return false
+    end if
 
     ' Handle overlay screens
     if m.currentScreen = "playlists" then
@@ -1919,6 +2022,9 @@ function onKeyEvent(key, press) as boolean
             return true
         end if
     else
+        if key = "up" or key = "down" then
+            return startChannelListScroll(key)
+        end if
         if key = "left" then
             m.state.menuFocused = true
             m.nodes.Menu.setFocus(true)
