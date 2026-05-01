@@ -403,7 +403,7 @@ sub onRowItemFocused()
     item = m.content.getChild(row)
     if item = invalid or item.isLoading then
         m.nodes.InfoBar.visible = false
-        m.nodes.PreviewPoster.visible = false
+        if not m.isChannelLoading then m.nodes.PreviewPoster.visible = false
         return
     end if
 
@@ -417,7 +417,9 @@ sub onRowItemFocused()
 
     if not m.state.isFullScreen then
         m.nodes.PreviewPoster.visible = true
-        m.nodes.FadeInPreview.control = "start"
+        if m.nodes.PreviewPoster.opacity < 1.0 then
+            m.nodes.PreviewPoster.opacity = 1.0
+        end if
     else
         m.nodes.FadeOutPreview.control = "start"
     end if
@@ -521,6 +523,12 @@ end sub
 sub showPlaybackLoading(title as string, subtitle as string)
     m.isChannelLoading = true
     positionPlaybackStatusOverlay()
+    if not m.state.isFullScreen then
+        m.nodes.FadeOutPreview.control = "stop"
+        m.nodes.FadeInPreview.control = "stop"
+        m.nodes.PreviewPoster.visible = true
+        m.nodes.PreviewPoster.opacity = 1.0
+    end if
 
     nodes = m.nodes.PlaybackStatus
     displayTitle = title
@@ -969,7 +977,13 @@ sub onVideoStateChange()
     else if state = "playing" then
         m.nodes.Labels.ChannelCount.text = "Channel loaded"
         hidePlaybackStatusOverlay()
-        m.nodes.FadeOutPreview.control = "start"
+        if m.state.isFullScreen then
+            m.nodes.FadeOutPreview.control = "start"
+        else
+            m.nodes.FadeOutPreview.control = "stop"
+            m.nodes.PreviewPoster.visible = true
+            m.nodes.PreviewPoster.opacity = 1.0
+        end if
         m.nodes.Timer.control = "start"
         m.errorState = false
         m.minBufferReached = true
@@ -990,7 +1004,7 @@ sub onVideoStateChange()
         m.nodes.Labels.ChannelCount.text = "Failed to load channel"
         if not m.state.isFullScreen then
             m.nodes.PreviewPoster.visible = true
-            m.nodes.FadeInPreview.control = "start"
+            m.nodes.PreviewPoster.opacity = 1.0
         end if
         m.errorState = true
         m.errorResetTimer.control = "start"
@@ -1005,7 +1019,7 @@ sub onVideoStateChange()
             hidePlaybackStatusOverlay()
             if not m.state.isFullScreen then
                 m.nodes.PreviewPoster.visible = true
-                m.nodes.FadeInPreview.control = "start"
+                m.nodes.PreviewPoster.opacity = 1.0
             end if
         end if
         m.forcePlayTimer.control = "stop"
