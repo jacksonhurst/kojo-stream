@@ -29,10 +29,9 @@ sub updateContent()
             if title = "" and content.Title <> invalid then title = content.Title
 
             meta = ""
-            if content.epgNow <> invalid and content.epgNow <> "" then
-                meta = content.epgNow
+            if (content.epgNow = invalid or content.epgNow = "") and content.category <> invalid and content.category <> "" then
+                meta = content.category
             end if
-            if meta = "" and content.category <> invalid and content.category <> "" then meta = content.category
 
             m.TitleLabel.text = title
             m.MetaLabel.text = meta
