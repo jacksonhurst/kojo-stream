@@ -75,6 +75,8 @@ sub init()
     m.currentScreen = "main" ' main, playlists, settings
     m.currentXmltvUrl = ""
     m.currentGuideTitle = ""
+    m.searchActive = false
+    m.searchTerm = ""
     m.epgByChannel = {}
     m.totalChannels = 0
     m.errorState = false
@@ -1815,6 +1817,8 @@ function normalizeGuideKey(value as dynamic) as string
 end function
 
 sub renderContent(sourceContent as object)
+    m.searchActive = false
+    m.searchTerm = ""
     m.content.removeChildrenIndex(m.content.getChildCount(), 0)
     channels = 0
     m.currentGuideTitle = ""
@@ -1864,6 +1868,8 @@ end sub
 
 sub filterContent(term)
     if m.LoadTask = invalid or m.LoadTask.content = invalid then return
+    m.searchActive = true
+    m.searchTerm = term
     m.content.removeChildrenIndex(m.content.getChildCount(), 0)
     termLower = lcase(term)
     count = 0
@@ -1888,15 +1894,60 @@ sub filterContent(term)
     m.nodes.RowList.content = m.content
     if count > 0 then
         m.nodes.Labels.ChannelCount.text = "Results: " + count.toStr()
+        m.state.lastRow = 0
         m.nodes.RowList.jumpToItem = 0
         m.nodes.Labels.Category.text = "Search: " + term
         m.nodes.Labels.Category2.text = "Up/Down to browse results"
     else
+        m.state.lastRow = 0
+        hideGuidePanel()
         m.nodes.Labels.ChannelCount.text = "No results found"
         m.nodes.Labels.Category.text = "Search: " + term
         m.nodes.Labels.Category2.text = "No matching channels"
     end if
 end sub
+
+sub clearSearch()
+    if not m.searchActive then return
+    stopFastChannelScroll()
+
+    focusedItem = invalid
+    focusRow = currentChannelFocusRow()
+    if m.content <> invalid and focusRow >= 0 and focusRow < m.content.getChildCount() then focusedItem = m.content.getChild(focusRow)
+
+    if m.LoadTask = invalid or m.LoadTask.content = invalid then
+        m.searchActive = false
+        m.searchTerm = ""
+        return
+    end if
+
+    renderContent(m.LoadTask.content)
+
+    targetRow = findMatchingVisibleChannelRow(focusedItem)
+    if targetRow < 0 then targetRow = 0
+    restoreChannelFocusRow(targetRow)
+    showLoadedChannelsText()
+    m.nodes.RowList.setFocus(true)
+end sub
+
+function findMatchingVisibleChannelRow(targetItem as object) as integer
+    if targetItem = invalid or m.content = invalid then return -1
+
+    targetUrl = getItemUrl(targetItem)
+    targetTvgId = normalizeGuideKey(getItemTvgId(targetItem))
+    targetTitle = normalizeGuideKey(getItemTitle(targetItem))
+
+    for i = 0 to m.content.getChildCount() - 1
+        ch = m.content.getChild(i)
+        if ch <> invalid then
+            if targetUrl <> "" and getItemUrl(ch) = targetUrl then return i
+            if targetTvgId <> "" and normalizeGuideKey(getItemTvgId(ch)) = targetTvgId then return i
+            if targetTitle <> "" and normalizeGuideKey(getItemTitle(ch)) = targetTitle then return i
+        end if
+    end for
+
+    return -1
+end function
 
 ' --- Menu ---
 
@@ -2057,6 +2108,10 @@ function onKeyEvent(key, press) as boolean
             return true
         end if
         if key = "back" then
+            if m.searchActive then
+                clearSearch()
+                return true
+            end if
             ' If video is playing in PIP, go fullscreen
             if m.nodes.Video.state = "playing" and not m.state.isFullScreen and not m.state.menuFocused then
                 m.nodes.Video.translation = [0,0]
