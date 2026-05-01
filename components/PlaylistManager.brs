@@ -2,6 +2,7 @@ sub init()
     m.playlistList = m.top.findNode("PlaylistList")
     m.emptyLabel = m.top.findNode("EmptyLabel")
     m.playlists = []
+    m.focusIndex = 0
     loadPlaylists()
     refreshList()
 end sub
@@ -65,6 +66,8 @@ sub refreshList()
     else
         m.playlistList.visible = true
         m.emptyLabel.visible = false
+        normalizeFocusIndex()
+        m.playlistList.jumpToItem = m.focusIndex
     end if
 end sub
 
@@ -140,7 +143,7 @@ sub onAddDialogButton()
 end sub
 
 sub showEditPlaylistDialog()
-    idx = m.playlistList.itemFocused
+    idx = getFocusedPlaylistIndex()
     if idx < 0 or idx >= m.playlists.count() then return
 
     pl = m.playlists[idx]
@@ -211,7 +214,7 @@ sub onEditDialogButton()
 end sub
 
 sub deletePlaylist()
-    idx = m.playlistList.itemFocused
+    idx = getFocusedPlaylistIndex()
     if idx < 0 or idx >= m.playlists.count() then return
 
     dialog = createObject("roSGNode", "StandardMessageDialog")
@@ -250,26 +253,79 @@ end sub
 
 sub focusList()
     if m.playlists.count() > 0
+        normalizeFocusIndex()
+        m.playlistList.jumpToItem = m.focusIndex
         m.playlistList.setFocus(true)
     else
         m.top.setFocus(true)
     end if
 end sub
 
+sub normalizeFocusIndex()
+    if m.playlists.count() = 0 then
+        m.focusIndex = 0
+        return
+    end if
+    if m.focusIndex < 0 then m.focusIndex = 0
+    if m.focusIndex >= m.playlists.count() then m.focusIndex = m.playlists.count() - 1
+end sub
+
+function getFocusedPlaylistIndex() as integer
+    if m.playlists.count() = 0 then return -1
+
+    idx = m.playlistList.itemFocused
+    if idx = invalid or idx < 0 or idx >= m.playlists.count() then
+        normalizeFocusIndex()
+        return m.focusIndex
+    end if
+
+    m.focusIndex = idx
+    return idx
+end function
+
+sub movePlaylistFocus(delta as integer)
+    if m.playlists.count() = 0 then return
+
+    idx = getFocusedPlaylistIndex()
+    if idx < 0 then idx = 0
+    idx = idx + delta
+    if idx < 0 then idx = m.playlists.count() - 1
+    if idx >= m.playlists.count() then idx = 0
+
+    m.focusIndex = idx
+    m.playlistList.jumpToItem = idx
+    m.playlistList.setFocus(true)
+end sub
+
+sub selectFocusedPlaylist()
+    if m.playlists.count() = 0 then
+        showAddPlaylistDialog()
+        return
+    end if
+
+    idx = getFocusedPlaylistIndex()
+    if idx >= 0 and idx < m.playlists.count() then
+        print "Selected playlist index "; idx; ": "; m.playlists[idx].name; " -> "; m.playlists[idx].url
+        m.top.selectedUrl = m.playlists[idx].url
+        m.top.selectedXmltv = m.playlists[idx].xmltvUrl
+    end if
+end sub
+
 function onKeyEvent(key, press) as boolean
     if not press then return false
 
+    if key = "up" then
+        movePlaylistFocus(-1)
+        return true
+    end if
+
+    if key = "down" then
+        movePlaylistFocus(1)
+        return true
+    end if
+
     if key = "OK" then
-        if m.playlists.count() = 0 then
-            showAddPlaylistDialog()
-        else
-            idx = m.playlistList.itemFocused
-            if idx >= 0 and idx < m.playlists.count() then
-                print "Selected playlist index "; idx; ": "; m.playlists[idx].name; " -> "; m.playlists[idx].url
-                m.top.selectedUrl = m.playlists[idx].url
-                m.top.selectedXmltv = m.playlists[idx].xmltvUrl
-            end if
-        end if
+        selectFocusedPlaylist()
         return true
     end if
 
@@ -287,7 +343,7 @@ function onKeyEvent(key, press) as boolean
         return true
     end if
 
-    if key = "rewind" then
+    if key = "rewind" or key = "replay" then
         ' Rewind button = Delete
         if m.playlists.count() > 0 then
             deletePlaylist()
