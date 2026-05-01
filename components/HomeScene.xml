@@ -92,31 +92,31 @@
                 <!-- Home -->
                 <Group id="MenuItem0">
                     <Rectangle id="IconHighlight0" translation="[-10,0]" width="8" height="40" color="0xE63946FF" visible="false" />
-                    <Label id="MenuIcon0" translation="[5,8]" width="30" height="30" text="H" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
+                    <Poster id="MenuIcon0" translation="[2,2]" width="36" height="36" uri="pkg:/images/icons/menu-home.png" loadDisplayMode="scaleToFit" />
                     <Label id="MenuLabel0" translation="[50,0]" width="400" height="40" text="Home" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" visible="false" />
                 </Group>
                 <!-- Search -->
                 <Group id="MenuItem1">
                     <Rectangle id="IconHighlight1" translation="[-10,0]" width="8" height="40" color="0xE63946FF" visible="false" />
-                    <Label id="MenuIcon1" translation="[5,8]" width="30" height="30" text="S" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
+                    <Poster id="MenuIcon1" translation="[2,2]" width="36" height="36" uri="pkg:/images/icons/menu-search.png" loadDisplayMode="scaleToFit" />
                     <Label id="MenuLabel1" translation="[50,0]" width="400" height="40" text="Search" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" visible="false" />
                 </Group>
                 <!-- Playlists -->
                 <Group id="MenuItem2">
                     <Rectangle id="IconHighlight2" translation="[-10,0]" width="8" height="40" color="0xE63946FF" visible="false" />
-                    <Label id="MenuIcon2" translation="[5,8]" width="30" height="30" text="P" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
+                    <Poster id="MenuIcon2" translation="[2,2]" width="36" height="36" uri="pkg:/images/icons/menu-playlists.png" loadDisplayMode="scaleToFit" />
                     <Label id="MenuLabel2" translation="[50,0]" width="400" height="40" text="Playlists" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" visible="false" />
                 </Group>
                 <!-- Refresh -->
                 <Group id="MenuItem3">
                     <Rectangle id="IconHighlight3" translation="[-10,0]" width="8" height="40" color="0xE63946FF" visible="false" />
-                    <Label id="MenuIcon3" translation="[5,8]" width="30" height="30" text="R" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
+                    <Poster id="MenuIcon3" translation="[2,2]" width="36" height="36" uri="pkg:/images/icons/menu-refresh.png" loadDisplayMode="scaleToFit" />
                     <Label id="MenuLabel3" translation="[50,0]" width="400" height="40" text="Refresh" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" visible="false" />
                 </Group>
                 <!-- Settings -->
                 <Group id="MenuItem4">
                     <Rectangle id="IconHighlight4" translation="[-10,0]" width="8" height="40" color="0xE63946FF" visible="false" />
-                    <Label id="MenuIcon4" translation="[5,8]" width="30" height="30" text="G" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
+                    <Poster id="MenuIcon4" translation="[2,2]" width="36" height="36" uri="pkg:/images/icons/menu-settings.png" loadDisplayMode="scaleToFit" />
                     <Label id="MenuLabel4" translation="[50,0]" width="400" height="40" text="Settings" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" visible="false" />
                 </Group>
             </LayoutGroup>

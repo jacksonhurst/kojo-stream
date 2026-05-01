@@ -313,6 +313,7 @@ sub showScreen(screen as string)
         m.nodes.Labels.Category.visible = true
         m.nodes.Labels.Category2.visible = true
         m.nodes.Labels.ChannelCount.visible = true
+        m.nodes.InfoBar.visible = false
         m.nodes.Menu.visible = true
         m.nodes.RowList.setFocus(true)
     else if screen = "playlists" then
@@ -357,8 +358,8 @@ sub onRowItemFocused()
         return
     end if
 
-    m.nodes.Labels.Info.text = item.title
-    m.nodes.InfoBar.visible = true
+    ' The focused channel title is already shown in the top guide label.
+    m.nodes.InfoBar.visible = false
     if item.HDPosterUrl <> "" then
         m.nodes.PreviewPoster.uri = item.HDPosterUrl
     else
