@@ -157,15 +157,7 @@ sub checkInitialPlaylist()
                 else
                     m.global.lastUrl = parsed[0].url
                 end if
-                if registry.exists("last_xmltv_url") then
-                    m.currentXmltvUrl = registry.read("last_xmltv_url")
-                else
-                    if parsed[0] <> invalid and parsed[0].doesExist("xmltvUrl") then
-                        m.currentXmltvUrl = parsed[0].xmltvUrl
-                    else
-                        m.currentXmltvUrl = ""
-                    end if
-                end if
+                m.currentXmltvUrl = resolveXmltvUrlForPlaylist(parsed, m.global.lastUrl)
             end if
         end if
     end if
@@ -221,6 +213,33 @@ function loadAutoRefreshOnStart() as boolean
     return true
 end function
 
+function resolveXmltvUrlForPlaylist(playlists as object, playlistUrl as string) as string
+    registry = createObject("roRegistrySection", "KojoStream")
+    targetUrl = sanitizeUrl(playlistUrl)
+    savedXmltv = ""
+    if registry.exists("last_xmltv_url") then savedXmltv = sanitizeUrl(registry.read("last_xmltv_url"))
+
+    matchedXmltv = ""
+    if playlists <> invalid then
+        for each pl in playlists
+            if pl <> invalid and type(pl) = "roAssociativeArray" then
+                plUrl = ""
+                if pl.doesExist("url") and pl.url <> invalid then plUrl = sanitizeUrl(pl.url)
+                if plUrl = "" and pl.doesExist("playlistUrl") and pl.playlistUrl <> invalid then plUrl = sanitizeUrl(pl.playlistUrl)
+                if plUrl = targetUrl then
+                    if pl.doesExist("xmltvUrl") and pl.xmltvUrl <> invalid then matchedXmltv = sanitizeUrl(pl.xmltvUrl)
+                    if matchedXmltv = "" and pl.doesExist("xmltv") and pl.xmltv <> invalid then matchedXmltv = sanitizeUrl(pl.xmltv)
+                    exit for
+                end if
+            end if
+        end for
+    end if
+
+    if matchedXmltv <> "" then return matchedXmltv
+    if savedXmltv <> "" then return savedXmltv
+    return ""
+end function
+
 sub showLoadingPlaceholders()
     m.content.removeChildrenIndex(m.content.getChildCount(), 0)
     for i = 0 to 19
@@ -238,6 +257,18 @@ sub startLoadingPlaylist(url as string)
     m.global.lastUrl = url
     m.epgByChannel = {}
     m.currentGuideTitle = ""
+    if m.currentXmltvUrl = "" then
+        registryForXmltv = createObject("roRegistrySection", "KojoStream")
+        if registryForXmltv.exists("kojostream_playlists") then
+            playlistJson = registryForXmltv.read("kojostream_playlists")
+            if playlistJson <> invalid and playlistJson <> "" then
+                parsedPlaylists = parseJSON(playlistJson)
+                if parsedPlaylists <> invalid then
+                    m.currentXmltvUrl = resolveXmltvUrlForPlaylist(parsedPlaylists, url)
+                end if
+            end if
+        end if
+    end if
     stopXmltvTimers()
     hidePlaybackStatusOverlay()
 

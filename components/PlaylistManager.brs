@@ -306,8 +306,9 @@ sub selectFocusedPlaylist()
     idx = getFocusedPlaylistIndex()
     if idx >= 0 and idx < m.playlists.count() then
         print "Selected playlist index "; idx; ": "; m.playlists[idx].name; " -> "; m.playlists[idx].url
-        m.top.selectedUrl = m.playlists[idx].url
+        ' Notify XMLTV first so HomeScene has the guide URL before selectedUrl starts loading.
         m.top.selectedXmltv = m.playlists[idx].xmltvUrl
+        m.top.selectedUrl = m.playlists[idx].url
     end if
 end sub
 
