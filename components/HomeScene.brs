@@ -51,6 +51,7 @@ sub init()
     m.state = {isFullScreen: false, lastRow: 0, menuItem: 0, menuFocused: false}
     m.currentScreen = "main" ' main, playlists, settings
     m.currentXmltvUrl = ""
+    m.currentGuideTitle = ""
     m.epgByChannel = {}
     m.totalChannels = 0
     m.errorState = false
@@ -211,6 +212,7 @@ end sub
 sub startLoadingPlaylist(url as string)
     m.global.lastUrl = url
     m.epgByChannel = {}
+    m.currentGuideTitle = ""
     hidePlaybackStatusOverlay()
 
     ' Save as last used
@@ -346,6 +348,18 @@ sub updateLoadingProgress()
     m.nodes.Labels.ChannelCount.text = "Loading channels: " + m.loadingProgress.toStr() + "%"
 end sub
 
+function buildLoadedChannelsText() as string
+    countText = "Channels loaded: " + m.totalChannels.toStr()
+    if m.currentGuideTitle <> invalid and m.currentGuideTitle <> "" then
+        return m.currentGuideTitle + "  |  " + countText
+    end if
+    return countText
+end function
+
+sub showLoadedChannelsText()
+    m.nodes.Labels.ChannelCount.text = buildLoadedChannelsText()
+end sub
+
 ' --- Row item focus ---
 
 sub onRowItemFocused()
@@ -383,11 +397,7 @@ sub updateCategoryLabel(row)
 
     guideLine = ""
     if focusedItem <> invalid then
-        if focusedItem.category <> invalid and focusedItem.category <> "" then
-            guideLine = focusedItem.category
-        end if
         if focusedItem.epgNow <> invalid and focusedItem.epgNow <> "" then
-            if guideLine <> "" then guideLine = guideLine + "  |  "
             guideLine = guideLine + "Now: " + focusedItem.epgNow
         end if
         if focusedItem.epgNext <> invalid and focusedItem.epgNext <> "" then
@@ -956,7 +966,7 @@ sub onVideoStateChange()
         else if m.isChannelLoading then
             m.nodes.Labels.ChannelCount.text = "Loading channel..."
         else
-            m.nodes.Labels.ChannelCount.text = "Channels loaded: " + m.totalChannels.toStr()
+            showLoadedChannelsText()
             hidePlaybackStatusOverlay()
             if not m.state.isFullScreen then
                 m.nodes.PreviewPoster.visible = true
@@ -1000,7 +1010,7 @@ sub resetErrorState()
         return
     end if
     if m.nodes.Video.state = "stopped" or m.nodes.Video.state = "finished" then
-        m.nodes.Labels.ChannelCount.text = "Channels loaded: " + m.totalChannels.toStr()
+        showLoadedChannelsText()
     end if
 end sub
 
@@ -1009,7 +1019,7 @@ sub restoreChannelCount()
         m.nodes.InfoBar.visible = false
     end if
     if not m.errorState then
-        m.nodes.Labels.ChannelCount.text = "Channels loaded: " + m.totalChannels.toStr()
+        showLoadedChannelsText()
     end if
 end sub
 
@@ -1155,10 +1165,16 @@ end function
 sub renderContent(sourceContent as object)
     m.content.removeChildrenIndex(m.content.getChildCount(), 0)
     channels = 0
+    m.currentGuideTitle = ""
 
     ' Vertical mode: one channel per row for up/down navigation.
     for each cat in sourceContent.getChildren(-1, 0)
         categoryTitle = cat.title
+        if m.currentGuideTitle = "" then
+            if categoryTitle <> invalid then
+                if categoryTitle <> "" then m.currentGuideTitle = categoryTitle
+            end if
+        end if
         for each ch in cat.getChildren(-1, 0)
             chClone = ch.clone(true)
             chClone.addField("isLoading", "boolean", true)
@@ -1177,7 +1193,7 @@ sub renderContent(sourceContent as object)
 
     m.nodes.RowList.content = m.content
     m.totalChannels = channels
-    m.nodes.Labels.ChannelCount.text = "Channels loaded: " + channels.toStr()
+    showLoadedChannelsText()
     m.nodes.LoadingAnim1.control = "stop"
     m.nodes.LoadingAnim2.control = "stop"
     m.nodes.Labels.Category.opacity = 1.0
@@ -1186,11 +1202,7 @@ sub renderContent(sourceContent as object)
     m.loadingTimer.control = "stop"
 
     m.nodes.Labels.Category.text = "Channels"
-    if m.currentXmltvUrl <> "" then
-        m.nodes.Labels.Category2.text = "Guide source: XMLTV connected"
-    else
-        m.nodes.Labels.Category2.text = "Guide source: none"
-    end if
+    m.nodes.Labels.Category2.text = ""
 
     applyGuideDataToVisibleRows()
     print "Content loaded: "; channels; " channels in vertical list"
