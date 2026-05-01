@@ -77,6 +77,45 @@
             font="font:SmallSystemFont"
             color="0xBBBBBBFF" />
 
+        <!-- Upcoming programme guide for the focused channel -->
+        <Group
+            id="GuidePanel"
+            translation="[620,430]"
+            visible="false">
+            <Label
+                id="GuidePanelTitle"
+                width="1180"
+                height="42"
+                text="Upcoming"
+                font="font:MediumBoldSystemFont"
+                color="0xFFFFFFFF" />
+            <Group id="GuideSlot0" translation="[0,60]">
+                <Rectangle width="1180" height="82" color="0x121820FF" opacity="0.92" />
+                <Label id="GuideTime0" translation="[22,16]" width="210" height="50" font="font:SmallSystemFont" color="0x8FB8FFFF" vertAlign="center" />
+                <Label id="GuideTitle0" translation="[250,12]" width="900" height="58" font="font:MediumSystemFont" color="0xFFFFFFFF" vertAlign="center" />
+            </Group>
+            <Group id="GuideSlot1" translation="[0,154]">
+                <Rectangle width="1180" height="82" color="0x121820FF" opacity="0.84" />
+                <Label id="GuideTime1" translation="[22,16]" width="210" height="50" font="font:SmallSystemFont" color="0x8FB8FFFF" vertAlign="center" />
+                <Label id="GuideTitle1" translation="[250,12]" width="900" height="58" font="font:MediumSystemFont" color="0xFFFFFFFF" vertAlign="center" />
+            </Group>
+            <Group id="GuideSlot2" translation="[0,248]">
+                <Rectangle width="1180" height="82" color="0x121820FF" opacity="0.78" />
+                <Label id="GuideTime2" translation="[22,16]" width="210" height="50" font="font:SmallSystemFont" color="0x8FB8FFFF" vertAlign="center" />
+                <Label id="GuideTitle2" translation="[250,12]" width="900" height="58" font="font:MediumSystemFont" color="0xFFFFFFFF" vertAlign="center" />
+            </Group>
+            <Group id="GuideSlot3" translation="[0,342]">
+                <Rectangle width="1180" height="82" color="0x121820FF" opacity="0.72" />
+                <Label id="GuideTime3" translation="[22,16]" width="210" height="50" font="font:SmallSystemFont" color="0x8FB8FFFF" vertAlign="center" />
+                <Label id="GuideTitle3" translation="[250,12]" width="900" height="58" font="font:MediumSystemFont" color="0xFFFFFFFF" vertAlign="center" />
+            </Group>
+            <Group id="GuideSlot4" translation="[0,436]">
+                <Rectangle width="1180" height="82" color="0x121820FF" opacity="0.66" />
+                <Label id="GuideTime4" translation="[22,16]" width="210" height="50" font="font:SmallSystemFont" color="0x8FB8FFFF" vertAlign="center" />
+                <Label id="GuideTitle4" translation="[250,12]" width="900" height="58" font="font:MediumSystemFont" color="0xFFFFFFFF" vertAlign="center" />
+            </Group>
+        </Group>
+
         <!-- Side menu -->
         <Group id="SideMenu">
             <Rectangle

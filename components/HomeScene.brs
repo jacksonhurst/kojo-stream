@@ -11,6 +11,17 @@ sub init()
             ChannelCount: m.top.findNode("ChannelCountLabel"),
             Info: m.top.findNode("InfoLabel")
         },
+        GuidePanel: {
+            Container: m.top.findNode("GuidePanel"),
+            Title: m.top.findNode("GuidePanelTitle"),
+            Slots: [
+                {Box: m.top.findNode("GuideSlot0"), Time: m.top.findNode("GuideTime0"), Title: m.top.findNode("GuideTitle0")},
+                {Box: m.top.findNode("GuideSlot1"), Time: m.top.findNode("GuideTime1"), Title: m.top.findNode("GuideTitle1")},
+                {Box: m.top.findNode("GuideSlot2"), Time: m.top.findNode("GuideTime2"), Title: m.top.findNode("GuideTitle2")},
+                {Box: m.top.findNode("GuideSlot3"), Time: m.top.findNode("GuideTime3"), Title: m.top.findNode("GuideTitle3")},
+                {Box: m.top.findNode("GuideSlot4"), Time: m.top.findNode("GuideTime4"), Title: m.top.findNode("GuideTitle4")}
+            ]
+        },
         InfoBar: m.top.findNode("InfoBar"),
         PlaybackStatus: {
             Overlay: m.top.findNode("PlaybackStatusOverlay"),
@@ -384,6 +395,7 @@ sub showScreen(screen as string)
         m.nodes.InfoBar.visible = false
         m.nodes.Menu.visible = true
         m.nodes.RowList.setFocus(true)
+        updateGuidePanelForFocusedItem()
     else if screen = "playlists" then
         m.nodes.PlaylistManager.visible = true
         m.nodes.SettingsScreen.visible = false
@@ -391,6 +403,7 @@ sub showScreen(screen as string)
         m.nodes.Labels.Category.visible = false
         m.nodes.Labels.Category2.visible = false
         m.nodes.InfoBar.visible = false
+        hideGuidePanel()
         m.nodes.Menu.visible = false
         m.nodes.PlaylistManager.setFocus(true)
     else if screen = "settings" then
@@ -400,6 +413,7 @@ sub showScreen(screen as string)
         m.nodes.Labels.Category.visible = false
         m.nodes.Labels.Category2.visible = false
         m.nodes.InfoBar.visible = false
+        hideGuidePanel()
         m.nodes.Menu.visible = false
         m.nodes.SettingsScreen.setFocus(true)
     end if
@@ -434,6 +448,7 @@ sub onRowItemFocused()
     item = m.content.getChild(row)
     if item = invalid or item.isLoading then
         m.nodes.InfoBar.visible = false
+        hideGuidePanel()
         if not m.isChannelLoading then m.nodes.PreviewPoster.visible = false
         return
     end if
@@ -461,19 +476,15 @@ sub updateCategoryLabel(row)
     totalRows = m.content.getChildCount()
     if totalRows = 0 then return
     focusedItem = m.content.getChild(row)
-    m.nodes.Labels.Category.text = getItemTitle(focusedItem)
-
-    guideLine = ""
-    if focusedItem <> invalid then
-        if focusedItem.epgNow <> invalid and focusedItem.epgNow <> "" then
-            guideLine = guideLine + "Now: " + focusedItem.epgNow
-        end if
-        if focusedItem.epgNext <> invalid and focusedItem.epgNext <> "" then
-            if guideLine <> "" then guideLine = guideLine + "  |  "
-            guideLine = guideLine + "Next: " + focusedItem.epgNext
-        end if
+    if focusedItem = invalid then
+        m.nodes.Labels.Category.text = ""
+        m.nodes.Labels.Category2.text = ""
+        hideGuidePanel()
+        return
     end if
-    m.nodes.Labels.Category2.text = guideLine
+    m.nodes.Labels.Category.text = getItemTitle(focusedItem)
+    m.nodes.Labels.Category2.text = ""
+    updateGuidePanelForItem(focusedItem)
     m.state.lastRow = row
 end sub
 
@@ -528,6 +539,11 @@ sub setFullScreen(state)
     nodes.Labels.ChannelCount.visible = not state
     nodes.InfoBar.visible = not state
     nodes.Menu.visible = not state
+    if state then
+        hideGuidePanel()
+    else
+        updateGuidePanelForFocusedItem()
+    end if
 
     if not state and nodes.Video.state <> "playing" then
         nodes.PreviewPoster.visible = true
@@ -1253,6 +1269,154 @@ function lookupEpgForChannel(ch as object) as object
     if tvgName <> "" and m.epgByChannel.doesExist(tvgName) then return m.epgByChannel[tvgName]
     if titleKey <> "" and m.epgByChannel.doesExist(titleKey) then return m.epgByChannel[titleKey]
     return invalid
+end function
+
+sub updateGuidePanelForFocusedItem()
+    if m.content = invalid then
+        hideGuidePanel()
+        return
+    end if
+
+    row = m.nodes.RowList.itemFocused
+    if row = invalid or row < 0 then row = m.state.lastRow
+    if row = invalid or row < 0 or row >= m.content.getChildCount() then
+        hideGuidePanel()
+        return
+    end if
+
+    updateGuidePanelForItem(m.content.getChild(row))
+end sub
+
+sub updateGuidePanelForItem(item as object)
+    if item = invalid or item.isLoading then
+        hideGuidePanel()
+        return
+    end if
+    if m.currentScreen <> "main" or m.state.isFullScreen then
+        hideGuidePanel()
+        return
+    end if
+
+    epg = lookupEpgForChannel(item)
+    if epg = invalid then
+        hideGuidePanel()
+        return
+    end if
+
+    slots = m.nodes.GuidePanel.Slots
+    upcoming = upcomingGuidePrograms(epg, slots.count())
+    if upcoming.count() = 0 then
+        hideGuidePanel()
+        return
+    end if
+
+    title = getItemTitle(item)
+    if title <> "" then
+        m.nodes.GuidePanel.Title.text = "Up next on " + title
+    else
+        m.nodes.GuidePanel.Title.text = "Up next"
+    end if
+
+    for i = 0 to slots.count() - 1
+        slot = slots[i]
+        if i < upcoming.count() then
+            program = upcoming[i]
+            slot.Box.visible = true
+            slot.Time.text = formatGuideTimeRange(program.startSeconds, program.stopSeconds)
+            slot.Title.text = program.title
+        else
+            slot.Box.visible = false
+            slot.Time.text = ""
+            slot.Title.text = ""
+        end if
+    end for
+
+    m.nodes.GuidePanel.Container.visible = true
+end sub
+
+sub hideGuidePanel()
+    if m.nodes = invalid or m.nodes.GuidePanel = invalid then return
+    m.nodes.GuidePanel.Container.visible = false
+    for each slot in m.nodes.GuidePanel.Slots
+        slot.Box.visible = false
+        slot.Time.text = ""
+        slot.Title.text = ""
+    end for
+end sub
+
+function upcomingGuidePrograms(epg as object, maxCount as integer) as object
+    result = []
+    if epg = invalid or maxCount <= 0 then return result
+    if type(epg) <> "roAssociativeArray" then return result
+    if not epg.doesExist("programs") or epg.programs = invalid then return result
+
+    nowSeconds = currentEpochSeconds()
+    lastStart = nowSeconds
+
+    for slotIndex = 0 to maxCount - 1
+        bestTitle = ""
+        bestStart = 0
+        bestStop = 0
+
+        for each pr in epg.programs
+            if pr <> invalid then
+                startSeconds = getGuideProgramSeconds(pr, "start")
+                stopSeconds = getGuideProgramSeconds(pr, "stop")
+                title = getGuideProgramTitle(pr)
+
+                if title <> "" and startSeconds > lastStart then
+                    if bestStart = 0 or startSeconds < bestStart then
+                        bestTitle = title
+                        bestStart = startSeconds
+                        bestStop = stopSeconds
+                    end if
+                end if
+            end if
+        end for
+
+        if bestStart = 0 then exit for
+        result.push({title: bestTitle, startSeconds: bestStart, stopSeconds: bestStop})
+        lastStart = bestStart
+    end for
+
+    return result
+end function
+
+function formatGuideTimeRange(startSeconds as integer, stopSeconds as integer) as string
+    startText = formatGuideClock(startSeconds)
+    if startText = "" then return ""
+
+    if stopSeconds > startSeconds then
+        stopText = formatGuideClock(stopSeconds)
+        if stopText <> "" then return startText + " - " + stopText
+    end if
+
+    return startText
+end function
+
+function formatGuideClock(seconds as integer) as string
+    if seconds <= 0 then return ""
+    dt = createObject("roDateTime")
+    if dt = invalid then return ""
+
+    dt.FromSeconds(seconds)
+    dt.ToLocalTime()
+
+    hour = dt.GetHours()
+    minute = dt.GetMinutes()
+    suffix = "AM"
+    if hour >= 12 then suffix = "PM"
+
+    displayHour = hour
+    if displayHour = 0 then displayHour = 12
+    if displayHour > 12 then displayHour = displayHour - 12
+
+    return displayHour.toStr() + ":" + padTwoDigits(minute) + " " + suffix
+end function
+
+function padTwoDigits(value as integer) as string
+    if value < 10 then return "0" + value.toStr()
+    return value.toStr()
 end function
 
 function currentGuideInfo(epg as object) as object

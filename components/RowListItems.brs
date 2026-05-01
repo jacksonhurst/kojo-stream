@@ -30,11 +30,7 @@ sub updateContent()
 
             meta = ""
             if content.epgNow <> invalid and content.epgNow <> "" then
-                meta = meta + "Now: " + content.epgNow
-            end if
-            if content.epgNext <> invalid and content.epgNext <> "" then
-                if meta <> "" then meta = meta + "  |  "
-                meta = meta + "Next: " + content.epgNext
+                meta = content.epgNow
             end if
             if meta = "" and content.category <> invalid and content.category <> "" then meta = content.category
 
