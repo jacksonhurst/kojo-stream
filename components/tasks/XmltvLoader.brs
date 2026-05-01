@@ -49,6 +49,7 @@ end function
 function buildGuideMap(root as object) as object
     guide = {}
     channelNameById = {}
+    nowSeconds = currentEpochSeconds()
 
     channels = root.getNamedElements("channel")
     if channels <> invalid then
@@ -75,13 +76,26 @@ function buildGuideMap(root as object) as object
             if title = invalid or title = "" then
                 ' skip
             else
+                startSeconds = parseXmltvTime(pr@start)
+                stopSeconds = parseXmltvTime(pr@stop)
                 if not guide.doesExist(chId) then
-                    guide[chId] = {nowTitle: "", nextTitle: ""}
+                    guide[chId] = createGuideEntry()
                 end if
-                if guide[chId].nowTitle = "" then
-                    guide[chId].nowTitle = title
-                else if guide[chId].nextTitle = "" and guide[chId].nowTitle <> title then
-                    guide[chId].nextTitle = title
+                if startSeconds > 0 then
+                    guide[chId].programs.push({
+                        title: title
+                        start: startSeconds
+                        stop: stopSeconds
+                    })
+
+                    if startSeconds <= nowSeconds and (stopSeconds = 0 or stopSeconds > nowSeconds) then
+                        guide[chId].nowTitle = title
+                    else if startSeconds > nowSeconds then
+                        if guide[chId].nextTitle = "" or startSeconds < guide[chId].nextStart then
+                            guide[chId].nextTitle = title
+                            guide[chId].nextStart = startSeconds
+                        end if
+                    end if
                 end if
             end if
         end if
@@ -95,6 +109,70 @@ function buildGuideMap(root as object) as object
     end for
 
     return guide
+end function
+
+function createGuideEntry() as object
+    return {
+        nowTitle: ""
+        nextTitle: ""
+        nextStart: 0
+        programs: []
+    }
+end function
+
+function currentEpochSeconds() as integer
+    dt = createObject("roDateTime")
+    if dt = invalid then return 0
+    return dt.AsSeconds()
+end function
+
+function parseXmltvTime(value as dynamic) as integer
+    if value = invalid then return 0
+    raw = value.toStr().Trim()
+    if raw.Len() < 14 then return 0
+
+    stamp = raw.Left(14)
+    year = stamp.Left(4).toInt()
+    month = stamp.Mid(4, 2).toInt()
+    day = stamp.Mid(6, 2).toInt()
+    hour = stamp.Mid(8, 2).toInt()
+    minute = stamp.Mid(10, 2).toInt()
+    second = stamp.Mid(12, 2).toInt()
+
+    offsetSeconds = 0
+    rest = raw.Mid(14).Trim()
+    if rest.Len() >= 5 then
+        signChar = rest.Left(1)
+        if signChar = "+" or signChar = "-" then
+            offsetHours = rest.Mid(1, 2).toInt()
+            offsetMinutes = rest.Mid(3, 2).toInt()
+            offsetSeconds = (offsetHours * 3600) + (offsetMinutes * 60)
+            if signChar = "-" then offsetSeconds = -offsetSeconds
+        end if
+    end if
+
+    return epochSecondsUtc(year, month, day, hour, minute, second) - offsetSeconds
+end function
+
+function epochSecondsUtc(year as integer, month as integer, day as integer, hour as integer, minute as integer, second as integer) as integer
+    adjYear = year
+    if month <= 2 then adjYear = adjYear - 1
+
+    era = int(adjYear / 400)
+    yearOfEra = adjYear - (era * 400)
+
+    monthPrime = month
+    if monthPrime > 2 then
+        monthPrime = monthPrime - 3
+    else
+        monthPrime = monthPrime + 9
+    end if
+
+    dayOfYear = int(((153 * monthPrime) + 2) / 5) + day - 1
+    dayOfEra = (yearOfEra * 365) + int(yearOfEra / 4) - int(yearOfEra / 100) + dayOfYear
+    daysSinceEpoch = (era * 146097) + dayOfEra - 719468
+
+    return (daysSinceEpoch * 86400) + (hour * 3600) + (minute * 60) + second
 end function
 
 function normalizeKey(value as dynamic) as string

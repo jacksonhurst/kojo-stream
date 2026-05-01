@@ -22,6 +22,8 @@ sub init()
             Pulse: m.top.findNode("PlaybackStatusPulse")
         },
         Timer: m.top.findNode("ChannelLoadedTimer"),
+        GuideTickTimer: m.top.findNode("GuideTickTimer"),
+        XmltvRefreshTimer: m.top.findNode("XmltvRefreshTimer"),
         Scrolls: {
             Up: m.top.findNode("ScrollCategoryLabelUp"),
             Down: m.top.findNode("ScrollCategoryLabelDown"),
@@ -68,6 +70,7 @@ sub init()
     ' Load view mode preference
     m.viewMode = loadViewMode()
     m.transcodeServerUrl = loadTranscodeServerUrl()
+    m.autoRefreshOnStart = loadAutoRefreshOnStart()
 
     ' Initialize content with loading placeholders
     m.content = createObject("roSGNode", "ContentNode")
@@ -106,12 +109,15 @@ sub init()
 
     ' Set up SettingsScreen observer
     m.nodes.SettingsScreen.observeField("viewMode", "onViewModeChanged")
+    m.nodes.SettingsScreen.observeField("autoRefreshOnStart", "onAutoRefreshOnStartChanged")
     m.nodes.SettingsScreen.observeField("transcodeServerUrl", "onTranscodeServerUrlChanged")
 
     ' Set up observers
     m.nodes.RowList.observeField("itemSelected", "ChannelChange")
     m.nodes.RowList.observeField("itemFocused", "onRowItemFocused")
     m.nodes.Timer.observeField("fire", "restoreChannelCount")
+    m.nodes.GuideTickTimer.observeField("fire", "onGuideTick")
+    m.nodes.XmltvRefreshTimer.observeField("fire", "onXmltvRefreshTimer")
     m.nodes.Video.observeField("state", "onVideoStateChange")
     m.nodes.Video.observeField("bufferingStatus", "onBufferingStatusChange")
 
@@ -164,9 +170,20 @@ sub checkInitialPlaylist()
         end if
     end if
 
-    if hasPlaylists and m.global.lastUrl <> "" then
+    if hasPlaylists and m.global.lastUrl <> "" and m.autoRefreshOnStart then
         showScreen("main")
         startLoadingPlaylist(m.global.lastUrl)
+    else if hasPlaylists then
+        m.isLoadingList = false
+        m.loadingTimer.control = "stop"
+        m.nodes.LoadingAnim1.control = "stop"
+        m.nodes.LoadingAnim2.control = "stop"
+        m.nodes.Labels.Category.text = ""
+        m.nodes.Labels.Category2.text = ""
+        m.nodes.Labels.ChannelCount.text = "Select a playlist to load"
+        m.content.removeChildrenIndex(m.content.getChildCount(), 0)
+        m.nodes.RowList.content = m.content
+        showScreen("playlists")
     else
         ' No playlists - show playlist manager
         m.isLoadingList = false
@@ -196,6 +213,14 @@ function loadTranscodeServerUrl() as string
     return ""
 end function
 
+function loadAutoRefreshOnStart() as boolean
+    registry = createObject("roRegistrySection", "KojoStream")
+    if registry.exists("auto_refresh_on_start") then
+        return registry.read("auto_refresh_on_start") <> "false"
+    end if
+    return true
+end function
+
 sub showLoadingPlaceholders()
     m.content.removeChildrenIndex(m.content.getChildCount(), 0)
     for i = 0 to 19
@@ -213,6 +238,7 @@ sub startLoadingPlaylist(url as string)
     m.global.lastUrl = url
     m.epgByChannel = {}
     m.currentGuideTitle = ""
+    stopXmltvTimers()
     hidePlaybackStatusOverlay()
 
     ' Save as last used
@@ -272,6 +298,15 @@ sub onViewModeChanged()
     ' Re-render content with new view mode if we have content
     if m.LoadTask <> invalid and m.LoadTask.content <> invalid then
         renderContent(m.LoadTask.content)
+    end if
+end sub
+
+sub onAutoRefreshOnStartChanged()
+    m.autoRefreshOnStart = m.nodes.SettingsScreen.autoRefreshOnStart
+    if m.autoRefreshOnStart then
+        print "Auto-refresh on start enabled"
+    else
+        print "Auto-refresh on start disabled"
     end if
 end sub
 
@@ -1081,6 +1116,8 @@ sub loadXmltvGuide(xmltvUrl as string)
     m.XmltvTask.xmltvUrl = xmltvUrl
     m.XmltvTask.control = "RUN"
     m.nodes.Labels.Category2.text = "Loading guide data..."
+    m.nodes.GuideTickTimer.control = "stop"
+    m.nodes.XmltvRefreshTimer.control = "stop"
     print "Loading XMLTV guide: "; xmltvUrl
 end sub
 
@@ -1097,6 +1134,10 @@ sub onXmltvGuideLoaded()
 
     m.epgByChannel = parsed
     applyGuideDataToVisibleRows()
+    row = m.nodes.RowList.itemFocused
+    if row <> invalid and row >= 0 then updateCategoryLabel(row)
+    m.nodes.GuideTickTimer.control = "start"
+    m.nodes.XmltvRefreshTimer.control = "start"
     print "XMLTV guide loaded keys: "; m.epgByChannel.count()
 end sub
 
@@ -1107,6 +1148,25 @@ sub onXmltvGuideError()
         print "XMLTV error: "; err
         m.nodes.Labels.Category2.text = "Guide unavailable"
     end if
+end sub
+
+sub onGuideTick()
+    if m.epgByChannel = invalid or type(m.epgByChannel) <> "roAssociativeArray" then return
+    applyGuideDataToVisibleRows()
+    row = m.nodes.RowList.itemFocused
+    if row <> invalid and row >= 0 then updateCategoryLabel(row)
+end sub
+
+sub onXmltvRefreshTimer()
+    if m.currentXmltvUrl <> invalid and m.currentXmltvUrl <> "" then
+        print "Refreshing XMLTV guide: "; m.currentXmltvUrl
+        loadXmltvGuide(m.currentXmltvUrl)
+    end if
+end sub
+
+sub stopXmltvTimers()
+    m.nodes.GuideTickTimer.control = "stop"
+    m.nodes.XmltvRefreshTimer.control = "stop"
 end sub
 
 sub applyGuideDataToVisibleRows()
@@ -1124,8 +1184,9 @@ sub applyGuideDataToVisibleRows()
             else
                 epg = lookupEpgForChannel(ch)
                 if epg <> invalid then
-                    ch.epgNow = epg.nowTitle
-                    ch.epgNext = epg.nextTitle
+                    guideInfo = currentGuideInfo(epg)
+                    ch.epgNow = guideInfo.nowTitle
+                    ch.epgNext = guideInfo.nextTitle
                 else
                     ch.epgNow = ""
                     ch.epgNext = ""
@@ -1140,11 +1201,72 @@ end sub
 function lookupEpgForChannel(ch as object) as object
     if m.epgByChannel = invalid or type(m.epgByChannel) <> "roAssociativeArray" then return invalid
     tvgId = normalizeGuideKey(getItemTvgId(ch))
+    tvgName = normalizeGuideKey(getItemTvgName(ch))
     titleKey = normalizeGuideKey(getItemTitle(ch))
 
     if tvgId <> "" and m.epgByChannel.doesExist(tvgId) then return m.epgByChannel[tvgId]
+    if tvgName <> "" and m.epgByChannel.doesExist(tvgName) then return m.epgByChannel[tvgName]
     if titleKey <> "" and m.epgByChannel.doesExist(titleKey) then return m.epgByChannel[titleKey]
     return invalid
+end function
+
+function currentGuideInfo(epg as object) as object
+    result = {nowTitle: "", nextTitle: ""}
+    if epg = invalid then return result
+
+    if type(epg) = "roAssociativeArray" and epg.doesExist("programs") and epg.programs <> invalid then
+        nowSeconds = currentEpochSeconds()
+        bestNowStart = 0
+        bestNextStart = 0
+
+        for each pr in epg.programs
+            if pr <> invalid then
+                startSeconds = getGuideProgramSeconds(pr, "start")
+                stopSeconds = getGuideProgramSeconds(pr, "stop")
+                title = getGuideProgramTitle(pr)
+
+                if title <> "" and startSeconds > 0 then
+                    if startSeconds <= nowSeconds and (stopSeconds = 0 or stopSeconds > nowSeconds) then
+                        if bestNowStart = 0 or startSeconds > bestNowStart then
+                            bestNowStart = startSeconds
+                            result.nowTitle = title
+                        end if
+                    else if startSeconds > nowSeconds then
+                        if bestNextStart = 0 or startSeconds < bestNextStart then
+                            bestNextStart = startSeconds
+                            result.nextTitle = title
+                        end if
+                    end if
+                end if
+            end if
+        end for
+
+        return result
+    end if
+
+    if type(epg) = "roAssociativeArray" then
+        if epg.doesExist("nowTitle") and epg.nowTitle <> invalid then result.nowTitle = epg.nowTitle
+        if epg.doesExist("nextTitle") and epg.nextTitle <> invalid then result.nextTitle = epg.nextTitle
+    end if
+    return result
+end function
+
+function currentEpochSeconds() as integer
+    dt = createObject("roDateTime")
+    if dt = invalid then return 0
+    return dt.AsSeconds()
+end function
+
+function getGuideProgramSeconds(program as object, fieldName as string) as integer
+    if program = invalid or type(program) <> "roAssociativeArray" then return 0
+    if not program.doesExist(fieldName) or program[fieldName] = invalid then return 0
+    return int(program[fieldName])
+end function
+
+function getGuideProgramTitle(program as object) as string
+    if program = invalid or type(program) <> "roAssociativeArray" then return ""
+    if program.doesExist("title") and program.title <> invalid then return program.title.toStr()
+    return ""
 end function
 
 function getItemTvgId(item as object) as string
@@ -1152,6 +1274,13 @@ function getItemTvgId(item as object) as string
     if item.tvgId <> invalid and item.tvgId <> "" then return item.tvgId
     if item.tvgID <> invalid and item.tvgID <> "" then return item.tvgID
     if item.tvg_id <> invalid and item.tvg_id <> "" then return item.tvg_id
+    return ""
+end function
+
+function getItemTvgName(item as object) as string
+    if item = invalid then return ""
+    if item.tvgName <> invalid and item.tvgName <> "" then return item.tvgName
+    if item.tvg_name <> invalid and item.tvg_name <> "" then return item.tvg_name
     return ""
 end function
 
@@ -1323,6 +1452,10 @@ function onKeyEvent(key, press) as boolean
     if m.currentScreen = "playlists" then
         if key = "back" then
             showScreen("main")
+            return true
+        end if
+        if key = "rewind" or key = "replay" then
+            m.nodes.PlaylistManager.deleteRequest = not m.nodes.PlaylistManager.deleteRequest
             return true
         end if
         return false ' let PlaylistManager handle other keys

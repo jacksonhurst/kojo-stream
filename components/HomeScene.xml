@@ -202,6 +202,8 @@
         <!-- Timers -->
         <Timer id="ChannelLoadedTimer" duration="2" />
         <Timer id="LoadingProgressTimer" duration="0.5" repeat="true" />
+        <Timer id="GuideTickTimer" duration="60" repeat="true" />
+        <Timer id="XmltvRefreshTimer" duration="1800" repeat="true" />
 
         <!-- Animations -->
         <Animation id="ScrollCategoryLabelUp" duration="0.03">
@@ -217,10 +219,10 @@
             <Vector2DFieldInterpolator fieldToInterp="CategoryLabel2.translation" key="[0,1]" keyValue="[[110,658],[110,648]]" />
         </Animation>
         <Animation id="ExpandMenu" duration="0.2">
-            <FloatFieldInterpolator fieldToInterp="MenuBackground.width" key="[0,1]" keyValue="[60,500]" />
+            <FloatFieldInterpolator fieldToInterp="MenuBackground.width" key="[0,1]" keyValue="[60,320]" />
         </Animation>
         <Animation id="CollapseMenu" duration="0.2">
-            <FloatFieldInterpolator fieldToInterp="MenuBackground.width" key="[0,1]" keyValue="[500,60]" />
+            <FloatFieldInterpolator fieldToInterp="MenuBackground.width" key="[0,1]" keyValue="[320,60]" />
         </Animation>
         <Animation id="FadeInPreview" duration="0.3">
             <FloatFieldInterpolator fieldToInterp="PreviewPoster.opacity" key="[0,1]" keyValue="[0,1]" />

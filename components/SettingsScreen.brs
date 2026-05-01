@@ -1,6 +1,8 @@
 sub init()
     m.viewModeLabel = m.top.findNode("ViewModeValue")
     m.viewModeHighlight = m.top.findNode("ViewModeHighlight")
+    m.autoRefreshLabel = m.top.findNode("AutoRefreshValue")
+    m.autoRefreshHighlight = m.top.findNode("AutoRefreshHighlight")
     m.transcodeServerLabel = m.top.findNode("TranscodeServerValue")
     m.transcodeServerHighlight = m.top.findNode("TranscodeServerHighlight")
     m.focusIndex = 0
@@ -29,12 +31,23 @@ sub loadSettings()
     else
         m.top.transcodeServerUrl = ""
     end if
+
+    if registry.exists("auto_refresh_on_start") then
+        m.top.autoRefreshOnStart = (registry.read("auto_refresh_on_start") <> "false")
+    else
+        m.top.autoRefreshOnStart = true
+    end if
 end sub
 
 sub saveSettings()
     registry = createObject("roRegistrySection", "KojoStream")
     registry.write("view_mode", m.top.viewMode)
     registry.write("transcode_server_url", m.top.transcodeServerUrl)
+    if m.top.autoRefreshOnStart then
+        registry.write("auto_refresh_on_start", "true")
+    else
+        registry.write("auto_refresh_on_start", "false")
+    end if
     registry.flush()
 end sub
 
@@ -51,12 +64,19 @@ sub updateDisplay()
         m.transcodeServerLabel.text = m.top.transcodeServerUrl
     end if
 
+    if m.top.autoRefreshOnStart then
+        m.autoRefreshLabel.text = "On"
+    else
+        m.autoRefreshLabel.text = "Off"
+    end if
+
     updateFocus()
 end sub
 
 sub updateFocus()
     m.viewModeHighlight.visible = (m.focusIndex = 0)
-    m.transcodeServerHighlight.visible = (m.focusIndex = 1)
+    m.autoRefreshHighlight.visible = (m.focusIndex = 1)
+    m.transcodeServerHighlight.visible = (m.focusIndex = 2)
 end sub
 
 sub toggleViewMode()
@@ -65,6 +85,12 @@ sub toggleViewMode()
     else
         m.top.viewMode = "grouped"
     end if
+    saveSettings()
+    updateDisplay()
+end sub
+
+sub toggleAutoRefreshOnStart()
+    m.top.autoRefreshOnStart = not m.top.autoRefreshOnStart
     saveSettings()
     updateDisplay()
 end sub
@@ -108,14 +134,14 @@ function onKeyEvent(key, press) as boolean
 
     if key = "up" then
         m.focusIndex = m.focusIndex - 1
-        if m.focusIndex < 0 then m.focusIndex = 1
+        if m.focusIndex < 0 then m.focusIndex = 2
         updateFocus()
         return true
     end if
 
     if key = "down" then
         m.focusIndex = m.focusIndex + 1
-        if m.focusIndex > 1 then m.focusIndex = 0
+        if m.focusIndex > 2 then m.focusIndex = 0
         updateFocus()
         return true
     end if
@@ -123,6 +149,8 @@ function onKeyEvent(key, press) as boolean
     if key = "OK" then
         if m.focusIndex = 0 then
             toggleViewMode()
+        else if m.focusIndex = 1 then
+            toggleAutoRefreshOnStart()
         else
             showTranscodeServerDialog()
         end if

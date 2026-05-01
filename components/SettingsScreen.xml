@@ -3,6 +3,7 @@
     <interface>
         <field id="visible" type="boolean" value="false" onChange="onVisibleChange" />
         <field id="viewMode" type="string" value="grouped" alwaysNotify="true" />
+        <field id="autoRefreshOnStart" type="boolean" value="true" alwaysNotify="true" />
         <field id="transcodeServerUrl" type="string" value="" alwaysNotify="true" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/SettingsScreen.brs" />
@@ -48,6 +49,32 @@
                     width="500"
                     height="40"
                     text="Group by Category"
+                    font="font:MediumSystemFont"
+                    color="0xFFFF00FF"
+                    horizAlign="right" />
+            </Group>
+
+            <Group id="AutoRefreshGroup">
+                <Rectangle
+                    id="AutoRefreshHighlight"
+                    width="1720"
+                    height="70"
+                    color="0x333355FF"
+                    visible="false" />
+                <Label
+                    id="AutoRefreshLabel"
+                    translation="[20,15]"
+                    width="800"
+                    height="40"
+                    text="Auto-refresh Playlist on Start"
+                    font="font:MediumBoldSystemFont"
+                    color="0xFFFFFFFF" />
+                <Label
+                    id="AutoRefreshValue"
+                    translation="[1200,15]"
+                    width="500"
+                    height="40"
+                    text="On"
                     font="font:MediumSystemFont"
                     color="0xFFFF00FF"
                     horizAlign="right" />

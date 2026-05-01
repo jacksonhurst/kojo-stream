@@ -3,6 +3,7 @@
     <interface>
         <field id="selectedUrl" type="string" alwaysNotify="true" />
         <field id="selectedXmltv" type="string" alwaysNotify="true" />
+        <field id="deleteRequest" type="boolean" alwaysNotify="true" onChange="onDeleteRequest" />
         <field id="visible" type="boolean" value="false" onChange="onVisibleChange" />
     </interface>
     <script type="text/brightscript" uri="pkg:/components/PlaylistManager.brs" />

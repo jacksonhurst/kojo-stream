@@ -224,6 +224,12 @@ sub deletePlaylist()
     m.top.getScene().dialog = dialog
 end sub
 
+sub onDeleteRequest()
+    if not m.top.visible then return
+    if m.top.getScene().dialog <> invalid then return
+    if m.playlists.count() > 0 then deletePlaylist()
+end sub
+
 sub onDeleteConfirm()
     dialog = m.top.getScene().dialog
     if dialog = invalid then return

@@ -78,6 +78,7 @@ Adding a playlist asks for:
 
 - `Up/Down`: move between settings.
 - `OK` on `Channel View Mode`: toggles the saved view preference.
+- `OK` on `Auto-refresh Playlist on Start`: toggles whether the last playlist is loaded automatically when the app opens. This defaults to `On`.
 - `OK` on `Transcode Server`: enter, update, or turn off the proxy URL.
 - `Back`: return to the main app.
 
@@ -88,9 +89,10 @@ The current channel browser is rendered as a vertical guide-style list.
 When adding or editing a playlist, you can enter an XMLTV URL. KojoStream downloads the guide feed in the background and maps guide entries to channels by:
 
 - `tvg-id`
+- `tvg-name`
 - channel title
 
-Matched guide data appears as `Now` and `Next` text while browsing.
+Matched guide data appears as `Now` and `Next` text while browsing. KojoStream recalculates current programme labels every minute from the downloaded XMLTV schedule and refreshes the feed periodically in the background.
 
 ## Playback Flow
 

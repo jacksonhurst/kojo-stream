@@ -100,12 +100,15 @@ Function parse(m3u as string) as object
                 title = line.Mid(line.Instr(",") + 1).Trim()
                 logo = ""
                 tvgId = ""
+                tvgName = ""
                 gm = CreateObject("roRegex", "group-title=""([^""]+)""", "i").Match(line)
                 if gm.count() > 1 then cat = gm[1]
                 lm = CreateObject("roRegex", "tvg-logo=""([^""]+)""", "i").Match(line)
                 if lm.count() > 1 then logo = lm[1]
                 tm = CreateObject("roRegex", "tvg-id=""([^""]+)""", "i").Match(line)
                 if tm.count() > 1 then tvgId = tm[1]
+                nm = CreateObject("roRegex", "tvg-name=""([^""]+)""", "i").Match(line)
+                if nm.count() > 1 then tvgName = nm[1]
 
                 if parsedLine.userAgent <> "" or parsedLine.referrer <> "" or parsedLine.origin <> "" or parsedLine.cookie <> "" then
                     headerAwareCount++
@@ -121,6 +124,7 @@ Function parse(m3u as string) as object
                     streamformat: fmt
                     live: live
                     tvgId: tvgId
+                    tvgName: tvgName
                     userAgent: parsedLine.userAgent
                     referrer: parsedLine.referrer
                     origin: parsedLine.origin
