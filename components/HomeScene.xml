@@ -149,6 +149,56 @@
             id="SettingsScreen"
             visible="false" />
 
+        <!-- Playback status overlay for channel loading/failure -->
+        <Group
+            id="PlaybackStatusOverlay"
+            translation="[1200,0]"
+            visible="false">
+            <Rectangle
+                id="PlaybackStatusBackdrop"
+                width="720"
+                height="405"
+                color="0x000000FF"
+                opacity="0.78" />
+            <Rectangle
+                id="PlaybackStatusCard"
+                translation="[80,95]"
+                width="560"
+                height="215"
+                color="0x121820FF"
+                opacity="0.92" />
+            <Label
+                id="PlaybackStatusIcon"
+                translation="[260,112]"
+                width="200"
+                height="64"
+                text="..."
+                font="font:MediumBoldSystemFont"
+                color="0xFFFFFFFF"
+                horizAlign="center"
+                vertAlign="center" />
+            <Label
+                id="PlaybackStatusTitle"
+                translation="[60,190]"
+                width="600"
+                height="44"
+                text="Loading channel"
+                font="font:MediumBoldSystemFont"
+                color="0xFFFFFFFF"
+                horizAlign="center"
+                vertAlign="center" />
+            <Label
+                id="PlaybackStatusSubtitle"
+                translation="[60,242]"
+                width="600"
+                height="42"
+                text="Preparing stream"
+                font="font:SmallSystemFont"
+                color="0xC9D4E5FF"
+                horizAlign="center"
+                vertAlign="center" />
+        </Group>
+
         <!-- Timers -->
         <Timer id="ChannelLoadedTimer" duration="2" />
         <Timer id="LoadingProgressTimer" duration="0.5" repeat="true" />
@@ -183,6 +233,9 @@
         </Animation>
         <Animation id="LoadingAnimation2" duration="1.0" repeat="true">
             <FloatFieldInterpolator fieldToInterp="CategoryLabel2.opacity" key="[0,0.5,1]" keyValue="[1.0,0.3,1.0]" />
+        </Animation>
+        <Animation id="PlaybackStatusPulse" duration="0.9" repeat="true">
+            <FloatFieldInterpolator fieldToInterp="PlaybackStatusIcon.opacity" key="[0,0.5,1]" keyValue="[0.35,1.0,0.35]" />
         </Animation>
     </children>
 </component>

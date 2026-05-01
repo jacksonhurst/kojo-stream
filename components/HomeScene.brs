@@ -12,6 +12,15 @@ sub init()
             Info: m.top.findNode("InfoLabel")
         },
         InfoBar: m.top.findNode("InfoBar"),
+        PlaybackStatus: {
+            Overlay: m.top.findNode("PlaybackStatusOverlay"),
+            Backdrop: m.top.findNode("PlaybackStatusBackdrop"),
+            Card: m.top.findNode("PlaybackStatusCard"),
+            Icon: m.top.findNode("PlaybackStatusIcon"),
+            Title: m.top.findNode("PlaybackStatusTitle"),
+            Subtitle: m.top.findNode("PlaybackStatusSubtitle"),
+            Pulse: m.top.findNode("PlaybackStatusPulse")
+        },
         Timer: m.top.findNode("ChannelLoadedTimer"),
         Scrolls: {
             Up: m.top.findNode("ScrollCategoryLabelUp"),
@@ -46,6 +55,7 @@ sub init()
     m.totalChannels = 0
     m.errorState = false
     m.minBufferReached = false
+    m.isChannelLoading = false
     m.currentlyPlayingItem = invalid
     m.currentPlaybackSourceItem = invalid
     m.currentPlaybackFormats = []
@@ -201,6 +211,7 @@ end sub
 sub startLoadingPlaylist(url as string)
     m.global.lastUrl = url
     m.epgByChannel = {}
+    hidePlaybackStatusOverlay()
 
     ' Save as last used
     registry = createObject("roRegistrySection", "KojoStream")
@@ -294,6 +305,7 @@ end sub
 sub showScreen(screen as string)
     m.currentScreen = screen
     m.top.setFocus(true)
+    if screen <> "main" then hidePlaybackStatusOverlay()
     if screen = "main" then
         m.nodes.PlaylistManager.visible = false
         m.nodes.SettingsScreen.visible = false
@@ -454,7 +466,99 @@ sub setFullScreen(state)
         nodes.Video.height = 405
         nodes.Video.enableUI = false
     end if
+
+    if nodes.PlaybackStatus.Overlay.visible then
+        positionPlaybackStatusOverlay()
+    end if
 end sub
+
+sub showPlaybackLoading(title as string, subtitle as string)
+    m.isChannelLoading = true
+    positionPlaybackStatusOverlay()
+
+    nodes = m.nodes.PlaybackStatus
+    displayTitle = title
+    if displayTitle = "" then displayTitle = "channel"
+    nodes.Icon.text = "..."
+    nodes.Icon.color = "0xFFFFFFFF"
+    nodes.Icon.opacity = 1.0
+    nodes.Title.text = "Loading " + displayTitle
+    nodes.Title.color = "0xFFFFFFFF"
+    nodes.Subtitle.text = subtitle
+    nodes.Subtitle.color = "0xC9D4E5FF"
+    nodes.Overlay.visible = true
+    nodes.Pulse.control = "start"
+end sub
+
+sub showPlaybackFailure(title as string)
+    m.isChannelLoading = false
+    positionPlaybackStatusOverlay()
+
+    nodes = m.nodes.PlaybackStatus
+    nodes.Pulse.control = "stop"
+    nodes.Icon.opacity = 1.0
+    nodes.Icon.text = "!"
+    nodes.Icon.color = "0xFF6B6BFF"
+    nodes.Title.text = "Failed to load channel"
+    nodes.Title.color = "0xFFFFFFFF"
+    if title <> "" then
+        nodes.Subtitle.text = title
+    else
+        nodes.Subtitle.text = "Try another channel"
+    end if
+    nodes.Subtitle.color = "0xC9D4E5FF"
+    nodes.Overlay.visible = true
+end sub
+
+sub hidePlaybackStatusOverlay()
+    m.isChannelLoading = false
+    m.nodes.PlaybackStatus.Pulse.control = "stop"
+    m.nodes.PlaybackStatus.Overlay.visible = false
+end sub
+
+sub positionPlaybackStatusOverlay()
+    nodes = m.nodes.PlaybackStatus
+    if m.state.isFullScreen then
+        nodes.Overlay.translation = [0,0]
+        nodes.Backdrop.width = 1920
+        nodes.Backdrop.height = 1080
+        nodes.Card.translation = [610,405]
+        nodes.Card.width = 700
+        nodes.Card.height = 270
+        nodes.Icon.translation = [820,430]
+        nodes.Icon.width = 280
+        nodes.Icon.height = 80
+        nodes.Title.translation = [510,545]
+        nodes.Title.width = 900
+        nodes.Title.height = 54
+        nodes.Subtitle.translation = [510,610]
+        nodes.Subtitle.width = 900
+        nodes.Subtitle.height = 44
+    else
+        nodes.Overlay.translation = [1200,0]
+        nodes.Backdrop.width = 720
+        nodes.Backdrop.height = 405
+        nodes.Card.translation = [80,95]
+        nodes.Card.width = 560
+        nodes.Card.height = 215
+        nodes.Icon.translation = [260,112]
+        nodes.Icon.width = 200
+        nodes.Icon.height = 64
+        nodes.Title.translation = [60,190]
+        nodes.Title.width = 600
+        nodes.Title.height = 44
+        nodes.Subtitle.translation = [60,242]
+        nodes.Subtitle.width = 600
+        nodes.Subtitle.height = 42
+    end if
+end sub
+
+function getPlaybackLoadingSubtitle(fmtSpec as string) as string
+    if fmtSpec = "hls-direct" then return "Trying native Roku playback"
+    if fmtSpec = "hls-wrapper" then return "Trying HLS compatibility wrapper"
+    if fmtSpec = "hls-transcode" then return "Preparing transcoded stream"
+    return "Preparing stream"
+end function
 
 ' --- Channel up/down during fullscreen playback ---
 
@@ -555,6 +659,8 @@ sub attemptPlaybackWithCurrentFormat(item as object)
     sourceUrl = getPlaybackSourceUrl(item)
     if sourceUrl = "" then sourceUrl = getItemUrl(item)
     title = getItemTitle(item)
+    loadingSubtitle = getPlaybackLoadingSubtitle(fmtSpec)
+    showPlaybackLoading(title, loadingSubtitle)
 
     content = item.clone(true)
     playUrl = sourceUrl
@@ -576,7 +682,7 @@ sub attemptPlaybackWithCurrentFormat(item as object)
         applyHttpHeadersToContent(content, item)
     end if
 
-    m.nodes.Labels.ChannelCount.text = "Loading channel: 0%"
+    m.nodes.Labels.ChannelCount.text = "Loading channel..."
     m.nodes.Video.content = content
     m.nodes.Video.control = "play"
     m.currentlyPlayingItem = content
@@ -809,9 +915,14 @@ sub onVideoStateChange()
         print "Video errorCode: "; m.nodes.Video.errorCode; " errorMsg: "; m.nodes.Video.errorMsg
     end if
     if state = "buffering" then
-        m.nodes.Labels.ChannelCount.text = "Loading channel: 0%"
+        if not m.isChannelLoading then
+            title = getItemTitle(m.nodes.Video.content)
+            showPlaybackLoading(title, "Preparing stream")
+        end if
+        m.nodes.Labels.ChannelCount.text = "Loading channel..."
     else if state = "playing" then
         m.nodes.Labels.ChannelCount.text = "Channel loaded"
+        hidePlaybackStatusOverlay()
         m.nodes.FadeOutPreview.control = "start"
         m.nodes.Timer.control = "start"
         m.errorState = false
@@ -828,7 +939,9 @@ sub onVideoStateChange()
             return
         end if
         runStreamProbe(m.currentPlaybackSourceItem)
-        m.nodes.Labels.ChannelCount.text = "Stream unavailable"
+        failedTitle = getItemTitle(m.currentPlaybackSourceItem)
+        showPlaybackFailure(failedTitle)
+        m.nodes.Labels.ChannelCount.text = "Failed to load channel"
         if not m.state.isFullScreen then
             m.nodes.PreviewPoster.visible = true
             m.nodes.FadeInPreview.control = "start"
@@ -838,9 +951,12 @@ sub onVideoStateChange()
         m.forcePlayTimer.control = "stop"
     else if state = "stopped" or state = "finished" then
         if m.errorState then
-            m.nodes.Labels.ChannelCount.text = "Stream unavailable"
+            m.nodes.Labels.ChannelCount.text = "Failed to load channel"
+        else if m.isChannelLoading then
+            m.nodes.Labels.ChannelCount.text = "Loading channel..."
         else
             m.nodes.Labels.ChannelCount.text = "Channels loaded: " + m.totalChannels.toStr()
+            hidePlaybackStatusOverlay()
             if not m.state.isFullScreen then
                 m.nodes.PreviewPoster.visible = true
                 m.nodes.FadeInPreview.control = "start"
@@ -853,13 +969,14 @@ sub onVideoStateChange()
         m.nodes.Video.width = 720
         m.nodes.Video.height = 405
         m.nodes.Video.enableUI = false
+        if m.nodes.PlaybackStatus.Overlay.visible then positionPlaybackStatusOverlay()
     end if
 end sub
 
 sub onBufferingStatusChange()
     status = m.nodes.Video.bufferingStatus
     if status <> invalid and status.percentage <> invalid and m.nodes.Video.state = "buffering" then
-        m.nodes.Labels.ChannelCount.text = "Loading channel: " + status.percentage.toStr() + "%"
+        m.nodes.Labels.ChannelCount.text = "Loading channel..."
         if status.percentage >= 5 and not m.minBufferReached then
             m.nodes.Video.control = "play"
             m.minBufferReached = true
@@ -877,6 +994,10 @@ end sub
 
 sub resetErrorState()
     m.errorState = false
+    if m.nodes.PlaybackStatus.Overlay.visible and m.nodes.PlaybackStatus.Title.text = "Failed to load channel" then
+        m.nodes.Labels.ChannelCount.text = "Failed to load channel"
+        return
+    end if
     if m.nodes.Video.state = "stopped" or m.nodes.Video.state = "finished" then
         m.nodes.Labels.ChannelCount.text = "Channels loaded: " + m.totalChannels.toStr()
     end if
