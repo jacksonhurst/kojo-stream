@@ -13,7 +13,6 @@ sub init()
         },
         GuidePanel: {
             Container: m.top.findNode("GuidePanel"),
-            Rows: m.top.findNode("GuideRows"),
             TimeHeaders: [
                 m.top.findNode("GuideTimeHeader0"),
                 m.top.findNode("GuideTimeHeader1"),
@@ -50,14 +49,9 @@ sub init()
         SettingsScreen: m.top.findNode("SettingsScreen")
     }
 
-    m.guideVisibleRows = 6
     m.guideProgramSlots = 6
     m.guideGridWidth = 1240
-    m.guideRowHeight = 95
-    m.guideRowPitch = 105
     m.guideWindowSeconds = 7200
-    m.guideRows = []
-    createGuideGridNodes()
     m.fastScrollKey = ""
     m.fastScrollTicks = 0
 
@@ -159,64 +153,6 @@ sub init()
 
     ' Check if playlists exist, if so try loading last used
     checkInitialPlaylist()
-end sub
-
-sub createGuideGridNodes()
-    if m.nodes = invalid then return
-    if m.nodes.GuidePanel = invalid then return
-    if m.nodes.GuidePanel.Rows = invalid then return
-
-    m.nodes.GuidePanel.Rows.removeChildrenIndex(m.nodes.GuidePanel.Rows.getChildCount(), 0)
-    m.guideRows = []
-
-    for rowIndex = 0 to m.guideVisibleRows - 1
-        rowGroup = createObject("roSGNode", "Group")
-        rowGroup.translation = [0, rowIndex * m.guideRowPitch]
-
-        rowBackground = createObject("roSGNode", "Rectangle")
-        rowBackground.width = m.guideGridWidth
-        rowBackground.height = m.guideRowHeight
-        rowBackground.color = "0x0E1722FF"
-        rowBackground.opacity = 0.54
-        rowGroup.appendChild(rowBackground)
-
-        cells = []
-        for cellIndex = 0 to m.guideProgramSlots - 1
-            cellGroup = createObject("roSGNode", "Group")
-            cellGroup.visible = false
-
-            cellBackground = createObject("roSGNode", "Rectangle")
-            cellBackground.width = 180
-            cellBackground.height = m.guideRowHeight
-            cellBackground.color = "0x172A3FFF"
-            cellBackground.opacity = 1.0
-            cellGroup.appendChild(cellBackground)
-
-            titleLabel = createObject("roSGNode", "Label")
-            titleLabel.translation = [12, 10]
-            titleLabel.width = 156
-            titleLabel.height = 46
-            titleLabel.color = "0xFFFFFFFF"
-            titleLabel.font = "font:SmallSystemFont"
-            titleLabel.vertAlign = "center"
-            cellGroup.appendChild(titleLabel)
-
-            timeLabel = createObject("roSGNode", "Label")
-            timeLabel.translation = [12, 58]
-            timeLabel.width = 156
-            timeLabel.height = 26
-            timeLabel.color = "0x9FBDE8FF"
-            timeLabel.font = "font:TinySystemFont"
-            timeLabel.vertAlign = "center"
-            cellGroup.appendChild(timeLabel)
-
-            rowGroup.appendChild(cellGroup)
-            cells.push({container: cellGroup, background: cellBackground, title: titleLabel, time: timeLabel})
-        end for
-
-        m.nodes.GuidePanel.Rows.appendChild(rowGroup)
-        m.guideRows.push({container: rowGroup, background: rowBackground, cells: cells})
-    end for
 end sub
 
 sub logDevicePlaybackCapabilities()
@@ -1467,11 +1403,14 @@ sub applyGuideDataToVisibleRows(preserveFocus as boolean)
             if ch = invalid or ch.isLoading then
                 ' skip
             else
+                ensureGuideFields(ch)
+                clearGuideFields(ch)
                 epg = lookupEpgForChannel(ch)
                 if epg <> invalid then
                     guideInfo = currentGuideInfo(epg)
                     ch.epgNow = guideInfo.nowTitle
                     ch.epgNext = guideInfo.nextTitle
+                    populateGuideFields(ch, epg)
                 else
                     ch.epgNow = ""
                     ch.epgNext = ""
@@ -1482,6 +1421,108 @@ sub applyGuideDataToVisibleRows(preserveFocus as boolean)
 
     m.nodes.RowList.content = m.content
     if preserveFocus then restoreChannelFocusRow(focusRow)
+end sub
+
+sub ensureGuideFields(ch as object)
+    if ch = invalid then return
+    if ch.guideVisible = invalid then ch.addField("guideVisible", "boolean", true)
+
+    if ch.guide0Title = invalid then ch.addField("guide0Title", "string", true)
+    if ch.guide0Time = invalid then ch.addField("guide0Time", "string", true)
+    if ch.guide0X = invalid then ch.addField("guide0X", "integer", true)
+    if ch.guide0Width = invalid then ch.addField("guide0Width", "integer", true)
+
+    if ch.guide1Title = invalid then ch.addField("guide1Title", "string", true)
+    if ch.guide1Time = invalid then ch.addField("guide1Time", "string", true)
+    if ch.guide1X = invalid then ch.addField("guide1X", "integer", true)
+    if ch.guide1Width = invalid then ch.addField("guide1Width", "integer", true)
+
+    if ch.guide2Title = invalid then ch.addField("guide2Title", "string", true)
+    if ch.guide2Time = invalid then ch.addField("guide2Time", "string", true)
+    if ch.guide2X = invalid then ch.addField("guide2X", "integer", true)
+    if ch.guide2Width = invalid then ch.addField("guide2Width", "integer", true)
+
+    if ch.guide3Title = invalid then ch.addField("guide3Title", "string", true)
+    if ch.guide3Time = invalid then ch.addField("guide3Time", "string", true)
+    if ch.guide3X = invalid then ch.addField("guide3X", "integer", true)
+    if ch.guide3Width = invalid then ch.addField("guide3Width", "integer", true)
+
+    if ch.guide4Title = invalid then ch.addField("guide4Title", "string", true)
+    if ch.guide4Time = invalid then ch.addField("guide4Time", "string", true)
+    if ch.guide4X = invalid then ch.addField("guide4X", "integer", true)
+    if ch.guide4Width = invalid then ch.addField("guide4Width", "integer", true)
+
+    if ch.guide5Title = invalid then ch.addField("guide5Title", "string", true)
+    if ch.guide5Time = invalid then ch.addField("guide5Time", "string", true)
+    if ch.guide5X = invalid then ch.addField("guide5X", "integer", true)
+    if ch.guide5Width = invalid then ch.addField("guide5Width", "integer", true)
+end sub
+
+sub clearGuideFields(ch as object)
+    if ch = invalid then return
+    ch.guideVisible = false
+    setGuideField(ch, 0, "", "", 0, 0)
+    setGuideField(ch, 1, "", "", 0, 0)
+    setGuideField(ch, 2, "", "", 0, 0)
+    setGuideField(ch, 3, "", "", 0, 0)
+    setGuideField(ch, 4, "", "", 0, 0)
+    setGuideField(ch, 5, "", "", 0, 0)
+end sub
+
+sub populateGuideFields(ch as object, epg as object)
+    if ch = invalid or epg = invalid then return
+    windowStart = currentGuideWindowStart()
+    programs = guideProgramsForWindow(epg, windowStart, windowStart + m.guideWindowSeconds, m.guideProgramSlots)
+    if programs.count() = 0 then return
+
+    ch.guideVisible = true
+    for i = 0 to programs.count() - 1
+        program = programs[i]
+        x = guideProgramX(program.startSeconds, windowStart)
+        width = guideProgramWidth(program.startSeconds, program.stopSeconds, windowStart)
+        if width < 80 then width = 80
+        if x + width > m.guideGridWidth then width = m.guideGridWidth - x
+        if width < 40 then
+            if x > m.guideGridWidth - 40 then x = m.guideGridWidth - 40
+            width = 40
+        end if
+
+        setGuideField(ch, i, cleanGuideText(program.title), formatGuideTimeRange(program.startSeconds, program.stopSeconds), x, width)
+    end for
+end sub
+
+sub setGuideField(ch as object, index as integer, title as string, timeText as string, x as integer, width as integer)
+    if index = 0 then
+        ch.guide0Title = title
+        ch.guide0Time = timeText
+        ch.guide0X = x
+        ch.guide0Width = width
+    else if index = 1 then
+        ch.guide1Title = title
+        ch.guide1Time = timeText
+        ch.guide1X = x
+        ch.guide1Width = width
+    else if index = 2 then
+        ch.guide2Title = title
+        ch.guide2Time = timeText
+        ch.guide2X = x
+        ch.guide2Width = width
+    else if index = 3 then
+        ch.guide3Title = title
+        ch.guide3Time = timeText
+        ch.guide3X = x
+        ch.guide3Width = width
+    else if index = 4 then
+        ch.guide4Title = title
+        ch.guide4Time = timeText
+        ch.guide4X = x
+        ch.guide4Width = width
+    else if index = 5 then
+        ch.guide5Title = title
+        ch.guide5Time = timeText
+        ch.guide5X = x
+        ch.guide5Width = width
+    end if
 end sub
 
 function currentChannelFocusRow() as integer
@@ -1531,13 +1572,6 @@ sub updateGuidePanelForFocusedItem()
         return
     end if
 
-    row = m.state.lastRow
-    if row = invalid or row < 0 then row = m.nodes.RowList.itemFocused
-    if row = invalid or row < 0 or row >= m.content.getChildCount() then
-        hideGuidePanel()
-        return
-    end if
-
     if m.currentScreen <> "main" or m.state.isFullScreen then
         hideGuidePanel()
         return
@@ -1548,39 +1582,8 @@ sub updateGuidePanelForFocusedItem()
         return
     end if
 
-    windowStart = guideWindowStart(row)
-    if windowStart < 0 then
-        hideGuidePanel()
-        return
-    end if
-    windowEnd = windowStart + m.guideVisibleRows - 1
-    if windowEnd >= m.content.getChildCount() then windowEnd = m.content.getChildCount() - 1
-
     timeStart = currentGuideWindowStart()
     updateGuideTimeHeaders(timeStart)
-
-    focusedGridRow = row - windowStart
-    for guideRowIndex = 0 to m.guideVisibleRows - 1
-        contentRow = windowStart + guideRowIndex
-        guideRow = m.guideRows[guideRowIndex]
-
-        if contentRow <= windowEnd then
-            item = m.content.getChild(contentRow)
-            guideRow.container.visible = true
-            if guideRowIndex = focusedGridRow then
-                guideRow.background.color = "0x1C2E42FF"
-                guideRow.background.opacity = 0.88
-            else
-                guideRow.background.color = "0x0E1722FF"
-                guideRow.background.opacity = 0.54
-            end if
-            renderGuideProgramRow(guideRow, item, timeStart)
-        else
-            guideRow.container.visible = false
-            clearGuideProgramCells(guideRow)
-        end if
-    end for
-
     m.nodes.GuidePanel.Container.visible = true
 end sub
 
@@ -1588,97 +1591,6 @@ sub hideGuidePanel()
     if m.nodes = invalid then return
     if m.nodes.GuidePanel = invalid then return
     m.nodes.GuidePanel.Container.visible = false
-    if m.guideRows <> invalid then
-        for each guideRow in m.guideRows
-            guideRow.container.visible = false
-            clearGuideProgramCells(guideRow)
-        end for
-    end if
-end sub
-
-function guideWindowStart(focusedRow as integer) as integer
-    if m.content = invalid then return -1
-    totalRows = m.content.getChildCount()
-    if totalRows <= 0 then return -1
-
-    startRow = focusedRow
-    if startRow < 0 then startRow = 0
-
-    maxStart = totalRows - m.guideVisibleRows
-    if maxStart < 0 then maxStart = 0
-    if startRow > maxStart then startRow = maxStart
-
-    return startRow
-end function
-
-sub renderGuideProgramRow(guideRow as object, item as object, windowStart as integer)
-    clearGuideProgramCells(guideRow)
-    if item = invalid then return
-    if item.isLoading then return
-
-    epg = lookupEpgForChannel(item)
-    if epg = invalid then
-        renderGuidePlaceholder(guideRow, "No guide data")
-        return
-    end if
-
-    programs = guideProgramsForWindow(epg, windowStart, windowStart + m.guideWindowSeconds, m.guideProgramSlots)
-    if programs.count() = 0 then
-        renderGuidePlaceholder(guideRow, "No upcoming shows")
-        return
-    end if
-
-    for i = 0 to programs.count() - 1
-        cell = guideRow.cells[i]
-        program = programs[i]
-        x = guideProgramX(program.startSeconds, windowStart)
-        width = guideProgramWidth(program.startSeconds, program.stopSeconds, windowStart)
-        if width < 80 then width = 80
-        if x + width > m.guideGridWidth then width = m.guideGridWidth - x
-        if width < 40 then
-            if x > m.guideGridWidth - 40 then x = m.guideGridWidth - 40
-            width = 40
-        end if
-
-        cell.container.translation = [x, 0]
-        cell.container.visible = true
-        cell.container.clippingRect = [0, 0, width - 4, m.guideRowHeight]
-        cell.background.color = "0x172A3FFF"
-        cell.background.opacity = 1.0
-        cell.background.width = width - 4
-        cell.title.width = width - 24
-        cell.time.width = width - 24
-        cell.title.text = cleanGuideText(program.title)
-        cell.time.text = formatGuideTimeRange(program.startSeconds, program.stopSeconds)
-    end for
-end sub
-
-sub clearGuideProgramCells(guideRow as object)
-    if guideRow = invalid then return
-    if guideRow.cells = invalid then return
-    for each cell in guideRow.cells
-        cell.container.visible = false
-        cell.container.clippingRect = [0, 0, 1, 1]
-        cell.title.text = ""
-        cell.time.text = ""
-    end for
-end sub
-
-sub renderGuidePlaceholder(guideRow as object, text as string)
-    if guideRow = invalid then return
-    if guideRow.cells = invalid then return
-    if guideRow.cells.count() = 0 then return
-    cell = guideRow.cells[0]
-    cell.container.translation = [0, 0]
-    cell.container.visible = true
-    cell.container.clippingRect = [0, 0, m.guideGridWidth - 4, m.guideRowHeight]
-    cell.background.width = m.guideGridWidth - 4
-    cell.background.color = "0x101820FF"
-    cell.background.opacity = 1.0
-    cell.title.width = m.guideGridWidth - 24
-    cell.title.text = text
-    cell.time.width = m.guideGridWidth - 24
-    cell.time.text = ""
 end sub
 
 function cleanGuideText(value as dynamic) as string

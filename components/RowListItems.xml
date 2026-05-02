@@ -26,6 +26,10 @@
             height="30"
             font="font:SmallSystemFont"
             color="0xC0C0C0FF" />
+        <Group
+            id="guideGroup"
+            translation="[560,0]"
+            clippingRect="[0,0,1240,95]" />
 
         <Animation
             id="LoadingAnimation"

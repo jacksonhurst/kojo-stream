@@ -4,6 +4,11 @@ sub init()
     m.LoadingAnimation = m.top.findNode("LoadingAnimation")
     m.TitleLabel = m.top.findNode("titleLabel")
     m.MetaLabel = m.top.findNode("metaLabel")
+    m.GuideGroup = m.top.findNode("guideGroup")
+    m.guideGridWidth = 1240
+    m.guideRowHeight = 95
+    m.guideProgramSlots = 6
+    createGuideCells()
     m.Poster.uri = "pkg:/images/loading.png"
     m.currentUri = "pkg:/images/loading.png"
     m.top.observeField("itemContent", "updateContent")
@@ -21,6 +26,7 @@ sub updateContent()
             m.LoadingAnimation.control = "start"
             m.TitleLabel.text = "Loading channels..."
             m.MetaLabel.text = ""
+            hideGuideCells()
         else
             m.LoadingAnimation.control = "stop"
             m.Poster.opacity = 1.0
@@ -35,6 +41,7 @@ sub updateContent()
 
             m.TitleLabel.text = title
             m.MetaLabel.text = meta
+            renderGuideCells(content)
             if content.HDPosterUrl <> invalid and content.HDPosterUrl <> "" and content.HDPosterUrl <> m.currentUri
                 m.Poster.loadWidth = 133
                 m.Poster.loadHeight = 75
@@ -48,11 +55,142 @@ sub updateContent()
     end if
 end sub
 
+sub createGuideCells()
+    if m.GuideGroup = invalid then return
+    m.GuideGroup.removeChildrenIndex(m.GuideGroup.getChildCount(), 0)
+    m.guideCells = []
+
+    for i = 0 to m.guideProgramSlots - 1
+        cellGroup = createObject("roSGNode", "Group")
+        cellGroup.visible = false
+
+        cellBackground = createObject("roSGNode", "Rectangle")
+        cellBackground.width = 180
+        cellBackground.height = m.guideRowHeight
+        cellBackground.color = "0x172A3FFF"
+        cellBackground.opacity = 1.0
+        cellGroup.appendChild(cellBackground)
+
+        titleLabel = createObject("roSGNode", "Label")
+        titleLabel.translation = [12, 10]
+        titleLabel.width = 156
+        titleLabel.height = 46
+        titleLabel.color = "0xFFFFFFFF"
+        titleLabel.vertAlign = "center"
+        cellGroup.appendChild(titleLabel)
+
+        timeLabel = createObject("roSGNode", "Label")
+        timeLabel.translation = [12, 58]
+        timeLabel.width = 156
+        timeLabel.height = 26
+        timeLabel.color = "0x9FBDE8FF"
+        timeLabel.vertAlign = "center"
+        cellGroup.appendChild(timeLabel)
+
+        m.GuideGroup.appendChild(cellGroup)
+        m.guideCells.push({container: cellGroup, background: cellBackground, title: titleLabel, time: timeLabel})
+    end for
+end sub
+
+sub renderGuideCells(content as object)
+    if m.GuideGroup = invalid then return
+    if content = invalid then
+        hideGuideCells()
+        return
+    end if
+    if content.guideVisible = invalid then
+        hideGuideCells()
+        return
+    end if
+    if content.guideVisible = false then
+        hideGuideCells()
+        return
+    end if
+
+    for i = 0 to m.guideCells.count() - 1
+        cell = m.guideCells[i]
+        title = getGuideTitle(content, i)
+
+        if title <> "" then
+            x = getGuideX(content, i)
+            width = getGuideWidth(content, i)
+            if width < 40 then width = 40
+            if x < 0 then x = 0
+            if x + width > m.guideGridWidth then width = m.guideGridWidth - x
+            if width < 40 then width = 40
+
+            cell.container.translation = [x, 0]
+            cell.container.clippingRect = [0, 0, width - 4, m.guideRowHeight]
+            cell.container.visible = true
+            cell.background.width = width - 4
+            cell.title.width = width - 24
+            cell.time.width = width - 24
+            cell.title.text = title
+            cell.time.text = getGuideTime(content, i)
+        else
+            cell.container.visible = false
+            cell.container.clippingRect = [0, 0, 1, 1]
+            cell.title.text = ""
+            cell.time.text = ""
+        end if
+    end for
+end sub
+
+sub hideGuideCells()
+    if m.guideCells = invalid then return
+    for each cell in m.guideCells
+        cell.container.visible = false
+        cell.container.clippingRect = [0, 0, 1, 1]
+        cell.title.text = ""
+        cell.time.text = ""
+    end for
+end sub
+
+function getGuideTitle(content as object, index as integer) as string
+    if index = 0 and content.guide0Title <> invalid then return content.guide0Title
+    if index = 1 and content.guide1Title <> invalid then return content.guide1Title
+    if index = 2 and content.guide2Title <> invalid then return content.guide2Title
+    if index = 3 and content.guide3Title <> invalid then return content.guide3Title
+    if index = 4 and content.guide4Title <> invalid then return content.guide4Title
+    if index = 5 and content.guide5Title <> invalid then return content.guide5Title
+    return ""
+end function
+
+function getGuideTime(content as object, index as integer) as string
+    if index = 0 and content.guide0Time <> invalid then return content.guide0Time
+    if index = 1 and content.guide1Time <> invalid then return content.guide1Time
+    if index = 2 and content.guide2Time <> invalid then return content.guide2Time
+    if index = 3 and content.guide3Time <> invalid then return content.guide3Time
+    if index = 4 and content.guide4Time <> invalid then return content.guide4Time
+    if index = 5 and content.guide5Time <> invalid then return content.guide5Time
+    return ""
+end function
+
+function getGuideX(content as object, index as integer) as integer
+    if index = 0 and content.guide0X <> invalid then return int(content.guide0X)
+    if index = 1 and content.guide1X <> invalid then return int(content.guide1X)
+    if index = 2 and content.guide2X <> invalid then return int(content.guide2X)
+    if index = 3 and content.guide3X <> invalid then return int(content.guide3X)
+    if index = 4 and content.guide4X <> invalid then return int(content.guide4X)
+    if index = 5 and content.guide5X <> invalid then return int(content.guide5X)
+    return 0
+end function
+
+function getGuideWidth(content as object, index as integer) as integer
+    if index = 0 and content.guide0Width <> invalid then return int(content.guide0Width)
+    if index = 1 and content.guide1Width <> invalid then return int(content.guide1Width)
+    if index = 2 and content.guide2Width <> invalid then return int(content.guide2Width)
+    if index = 3 and content.guide3Width <> invalid then return int(content.guide3Width)
+    if index = 4 and content.guide4Width <> invalid then return int(content.guide4Width)
+    if index = 5 and content.guide5Width <> invalid then return int(content.guide5Width)
+    return 0
+end function
+
 sub updateSize()
     w = m.top.width
     h = m.top.height
     if w > 0 and h > 0
-        m.Background.width = w
+        m.Background.width = 520
         m.Background.height = h
         posterW = 133
         posterH = h - 20
