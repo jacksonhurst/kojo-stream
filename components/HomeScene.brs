@@ -331,8 +331,64 @@ function resolveXmltvUrlForPlaylist(playlists as object, playlistUrl as string) 
 
     if matchedXmltv <> "" then return matchedXmltv
     if savedXmltv <> "" then return savedXmltv
+    inferredXmltv = inferXmltvUrlForPlaylist(targetUrl)
+    if inferredXmltv <> "" then return inferredXmltv
     return ""
 end function
+
+function inferXmltvUrlForPlaylist(playlistUrl as string) as string
+    url = sanitizeUrl(playlistUrl)
+    if url = "" then return ""
+
+    lowerUrl = lcase(url)
+    if lowerUrl.instr("://drogon.tv/w/") >= 0 then
+        return url.Replace("/w/", "/g/")
+    end if
+
+    return ""
+end function
+
+sub saveXmltvUrlForPlaylist(playlistUrl as string, xmltvUrl as string)
+    targetUrl = sanitizeUrl(playlistUrl)
+    targetXmltv = sanitizeUrl(xmltvUrl)
+    if targetUrl = "" or targetXmltv = "" then return
+
+    registry = createObject("roRegistrySection", "KojoStream")
+    if not registry.exists("kojostream_playlists") then return
+
+    jsonStr = registry.read("kojostream_playlists")
+    if jsonStr = invalid or jsonStr = "" then return
+
+    playlists = parseJSON(jsonStr)
+    if playlists = invalid or type(playlists) <> "roArray" then return
+
+    changed = false
+    for each pl in playlists
+        if pl <> invalid and type(pl) = "roAssociativeArray" then
+            plUrl = ""
+            if pl.doesExist("url") and pl.url <> invalid then plUrl = sanitizeUrl(pl.url)
+            if plUrl = "" and pl.doesExist("playlistUrl") and pl.playlistUrl <> invalid then plUrl = sanitizeUrl(pl.playlistUrl)
+
+            if plUrl = targetUrl then
+                currentXmltv = ""
+                if pl.doesExist("xmltvUrl") and pl.xmltvUrl <> invalid then currentXmltv = sanitizeUrl(pl.xmltvUrl)
+                if currentXmltv = "" and pl.doesExist("xmltv") and pl.xmltv <> invalid then currentXmltv = sanitizeUrl(pl.xmltv)
+
+                if currentXmltv = "" then
+                    pl.xmltvUrl = targetXmltv
+                    changed = true
+                end if
+                exit for
+            end if
+        end if
+    end for
+
+    if changed then
+        registry.write("kojostream_playlists", formatJSON(playlists))
+        registry.flush()
+        print "Recovered XMLTV URL for playlist: "; targetXmltv
+    end if
+end sub
 
 sub showLoadingPlaceholders()
     m.content.removeChildrenIndex(m.content.getChildCount(), 0)
@@ -363,14 +419,16 @@ sub startLoadingPlaylist(url as string)
             end if
         end if
     end if
+    if m.currentXmltvUrl = "" then m.currentXmltvUrl = inferXmltvUrlForPlaylist(url)
     stopXmltvTimers()
     hidePlaybackStatusOverlay()
 
     ' Save as last used
     registry = createObject("roRegistrySection", "KojoStream")
     registry.write("last_used_url", url)
-    registry.write("last_xmltv_url", m.currentXmltvUrl)
+    if m.currentXmltvUrl <> "" then registry.write("last_xmltv_url", m.currentXmltvUrl)
     registry.flush()
+    if m.currentXmltvUrl <> "" then saveXmltvUrlForPlaylist(url, m.currentXmltvUrl)
 
     ' Reset UI to loading state
     m.nodes.Labels.ChannelCount.text = "Loading channels: 0%"
