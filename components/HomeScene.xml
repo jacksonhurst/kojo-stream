@@ -90,7 +90,7 @@
                 opacity="0.9" />
             <Label
                 id="GuideTimeHeader0"
-                translation="[12,0]"
+                translation="[0,0]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -98,7 +98,7 @@
                 vertAlign="center" />
             <Label
                 id="GuideTimeHeader1"
-                translation="[337,0]"
+                translation="[325,0]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -106,7 +106,7 @@
                 vertAlign="center" />
             <Label
                 id="GuideTimeHeader2"
-                translation="[662,0]"
+                translation="[650,0]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -114,21 +114,12 @@
                 vertAlign="center" />
             <Label
                 id="GuideTimeHeader3"
-                translation="[987,0]"
+                translation="[975,0]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
                 color="0x8FB8FFFF"
                 vertAlign="center" />
-        </Group>
-
-        <Group
-            id="GuideRightFade"
-            translation="[1760,360]"
-            visible="false">
-            <Rectangle translation="[0,0]" width="45" height="672" color="0x02070CFF" opacity="0.2" />
-            <Rectangle translation="[45,0]" width="45" height="672" color="0x02070CFF" opacity="0.42" />
-            <Rectangle translation="[90,0]" width="70" height="672" color="0x02070CFF" opacity="0.72" />
         </Group>
 
         <!-- Side menu -->

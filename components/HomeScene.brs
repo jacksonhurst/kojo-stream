@@ -13,7 +13,6 @@ sub init()
         },
         GuidePanel: {
             Container: m.top.findNode("GuidePanel"),
-            RightFade: m.top.findNode("GuideRightFade"),
             TimeHeaders: [
                 m.top.findNode("GuideTimeHeader0"),
                 m.top.findNode("GuideTimeHeader1"),
@@ -125,15 +124,15 @@ sub init()
     m.forcePlayTimer.observeField("fire", "forcePlayVideo")
     m.top.appendChild(m.forcePlayTimer)
 
-    ' Long-press channel scrolling starts as normal one-step movement, then ramps up.
+    ' Long-press channel scrolling starts one row at a time, then shortens the interval after a hold.
     m.fastScrollDelayTimer = createObject("roSGNode", "Timer")
-    m.fastScrollDelayTimer.duration = 0.45
+    m.fastScrollDelayTimer.duration = 0.65
     m.fastScrollDelayTimer.repeat = false
     m.fastScrollDelayTimer.observeField("fire", "beginFastChannelScroll")
     m.top.appendChild(m.fastScrollDelayTimer)
 
     m.fastScrollTimer = createObject("roSGNode", "Timer")
-    m.fastScrollTimer.duration = 0.12
+    m.fastScrollTimer.duration = 0.18
     m.fastScrollTimer.repeat = true
     m.fastScrollTimer.observeField("fire", "continueFastChannelScroll")
     m.top.appendChild(m.fastScrollTimer)
@@ -569,12 +568,14 @@ sub updateCategoryLabel(row)
     m.nodes.Labels.Category.text = getItemTitle(focusedItem)
     m.nodes.Labels.Category2.text = ""
     m.state.lastRow = row
+    ensureGuideRowsNear(row)
     updateGuidePanelForFocusedItem()
 end sub
 
 sub beginFastChannelScroll()
     if m.fastScrollKey = "" then return
     m.fastScrollTicks = 0
+    m.fastScrollTimer.duration = fastChannelScrollInterval()
     m.fastScrollTimer.control = "start"
 end sub
 
@@ -585,7 +586,8 @@ sub continueFastChannelScroll()
     end if
 
     m.fastScrollTicks++
-    scrollFocusedChannel(m.fastScrollKey, fastChannelScrollStep())
+    m.fastScrollTimer.duration = fastChannelScrollInterval()
+    scrollFocusedChannel(m.fastScrollKey)
 end sub
 
 function startChannelListScroll(key as string) as boolean
@@ -597,7 +599,7 @@ function startChannelListScroll(key as string) as boolean
         stopFastChannelScroll()
         m.fastScrollKey = key
         m.fastScrollTicks = 0
-        scrollFocusedChannel(key, 1)
+        scrollFocusedChannel(key)
         m.fastScrollDelayTimer.control = "start"
     end if
 
@@ -619,13 +621,13 @@ sub stopFastChannelScroll()
     m.fastScrollTicks = 0
 end sub
 
-function fastChannelScrollStep() as integer
-    if m.fastScrollTicks < 8 then return 2
-    if m.fastScrollTicks < 18 then return 5
-    return 10
+function fastChannelScrollInterval()
+    if m.fastScrollTicks < 14 then return 0.18
+    if m.fastScrollTicks < 28 then return 0.105
+    return 0.065
 end function
 
-sub scrollFocusedChannel(key as string, stepSize as integer)
+sub scrollFocusedChannel(key as string)
     if m.content = invalid then return
     totalRows = m.content.getChildCount()
     if totalRows <= 0 then return
@@ -637,9 +639,9 @@ sub scrollFocusedChannel(key as string, stepSize as integer)
 
     nextRow = currentRow
     if key = "up" then
-        nextRow = currentRow - stepSize
+        nextRow = currentRow - 1
     else if key = "down" then
-        nextRow = currentRow + stepSize
+        nextRow = currentRow + 1
     end if
 
     if nextRow < 0 then nextRow = 0
@@ -1378,7 +1380,10 @@ end sub
 
 sub onGuideTick()
     if m.epgByChannel = invalid or type(m.epgByChannel) <> "roAssociativeArray" then return
-    applyGuideDataToVisibleRows(true)
+    focusRow = currentChannelFocusRow()
+    if focusRow < 0 then focusRow = 0
+    applyGuideDataToRowsNear(focusRow, true)
+    updateGuidePanelForFocusedItem()
 end sub
 
 sub onXmltvRefreshTimer()
@@ -1400,38 +1405,94 @@ sub applyGuideDataToVisibleRows(preserveFocus as boolean)
     focusRow = -1
     if preserveFocus then focusRow = currentChannelFocusRow()
 
-    for i = 0 to rowCount - 1
-        ch = m.content.getChild(i)
-        if ch = invalid then
-            ' skip
-        else
-            if ch = invalid or ch.isLoading then
-                ' skip
-            else
-                ensureGuideFields(ch)
-                clearGuideFields(ch)
-                epg = lookupEpgForChannel(ch)
-                if epg <> invalid then
-                    if m.guideSlideOffset = 0 or ch.epgNow = invalid then
-                        guideInfo = currentGuideInfo(epg)
-                        ch.epgNow = guideInfo.nowTitle
-                        ch.epgNext = guideInfo.nextTitle
-                    end if
-                    populateGuideFields(ch, epg)
-                else
-                    ch.epgNow = ""
-                    ch.epgNext = ""
-                end if
+    applyGuideDataToRowRange(0, rowCount - 1, true)
+    if preserveFocus and focusRow >= 0 then
+        updateCategoryLabelText(focusRow)
+        updateGuidePanelForFocusedItem()
+    end if
+end sub
 
-                ch.guideSlideOffset = m.guideSlideOffset
-                version = 0
-                if ch.guideVersion <> invalid then version = int(ch.guideVersion)
-                ch.guideVersion = version + 1
-            end if
-        end if
+sub ensureGuideRowsNear(row as integer)
+    if m.guideSlideOffset <> 0 then return
+    if m.epgByChannel = invalid or type(m.epgByChannel) <> "roAssociativeArray" then return
+    if m.epgByChannel.count() = 0 then return
+
+    applyGuideDataToRowsNear(row, false)
+end sub
+
+sub applyGuideDataToRowsNear(row as integer, forceUpdate as boolean)
+    if m.content = invalid then return
+    rowCount = m.content.getChildCount()
+    if rowCount = 0 then return
+
+    startRow = row - 4
+    endRow = row + 8
+    if startRow < 0 then startRow = 0
+    if endRow >= rowCount then endRow = rowCount - 1
+    applyGuideDataToRowRange(startRow, endRow, forceUpdate)
+end sub
+
+sub applyGuideDataToRowRange(startRow as integer, endRow as integer, forceUpdate as boolean)
+    if m.content = invalid then return
+    rowCount = m.content.getChildCount()
+    if rowCount = 0 then return
+    if startRow < 0 then startRow = 0
+    if endRow >= rowCount then endRow = rowCount - 1
+    if startRow > endRow then return
+
+    windowStart = currentGuideWindowStart()
+
+    for i = startRow to endRow
+        applyGuideDataToRow(i, windowStart, forceUpdate)
     end for
+end sub
 
-    if preserveFocus and focusRow >= 0 then updateCategoryLabel(focusRow)
+sub applyGuideDataToRow(row as integer, windowStart as integer, forceUpdate as boolean)
+    if m.content = invalid then return
+    if row < 0 or row >= m.content.getChildCount() then return
+
+    ch = m.content.getChild(row)
+    if ch = invalid or ch.isLoading then return
+
+    ensureGuideFields(ch)
+    if not forceUpdate and m.guideSlideOffset = 0 and ch.guideWindowStart <> invalid and int(ch.guideWindowStart) = windowStart then return
+
+    clearGuideFields(ch)
+    epg = lookupEpgForChannel(ch)
+    if epg <> invalid then
+        if m.guideSlideOffset = 0 or ch.epgNow = invalid then
+            guideInfo = currentGuideInfo(epg)
+            ch.epgNow = guideInfo.nowTitle
+            ch.epgNext = guideInfo.nextTitle
+        end if
+        populateGuideFieldsForWindow(ch, epg, windowStart)
+    else
+        ch.epgNow = ""
+        ch.epgNext = ""
+    end if
+
+    ch.guideWindowStart = windowStart
+    ch.guideSlideOffset = m.guideSlideOffset
+    version = 0
+    if ch.guideVersion <> invalid then version = int(ch.guideVersion)
+    ch.guideVersion = version + 1
+end sub
+
+sub updateCategoryLabelText(row as integer)
+    if m.content = invalid then return
+    totalRows = m.content.getChildCount()
+    if totalRows = 0 then return
+    if row < 0 or row >= totalRows then return
+    focusedItem = m.content.getChild(row)
+    if focusedItem = invalid then
+        m.nodes.Labels.Category.text = ""
+        m.nodes.Labels.Category2.text = ""
+        return
+    end if
+
+    m.nodes.Labels.Category.text = getItemTitle(focusedItem)
+    m.nodes.Labels.Category2.text = ""
+    m.state.lastRow = row
 end sub
 
 sub ensureGuideFields(ch as object)
@@ -1439,6 +1500,7 @@ sub ensureGuideFields(ch as object)
     if ch.guideVisible = invalid then ch.addField("guideVisible", "boolean", true)
     if ch.guideVersion = invalid then ch.addField("guideVersion", "integer", true)
     if ch.guideSlideOffset = invalid then ch.addField("guideSlideOffset", "integer", true)
+    if ch.guideWindowStart = invalid then ch.addField("guideWindowStart", "integer", true)
 
     if ch.guide0Title = invalid then ch.addField("guide0Title", "string", true)
     if ch.guide0Time = invalid then ch.addField("guide0Time", "string", true)
@@ -1482,9 +1544,8 @@ sub clearGuideFields(ch as object)
     setGuideField(ch, 5, "", "", 0, 0)
 end sub
 
-sub populateGuideFields(ch as object, epg as object)
+sub populateGuideFieldsForWindow(ch as object, epg as object, windowStart as integer)
     if ch = invalid or epg = invalid then return
-    windowStart = currentGuideWindowStart()
     programs = guideProgramsForWindow(epg, windowStart, windowStart + m.guideWindowSeconds, m.guideProgramSlots)
     if programs.count() = 0 then return
 
@@ -1507,7 +1568,10 @@ end sub
 sub refreshGuideWindow(preserveFocus as boolean)
     if m.epgByChannel = invalid or type(m.epgByChannel) <> "roAssociativeArray" then return
     if m.epgByChannel.count() = 0 then return
-    applyGuideDataToVisibleRows(preserveFocus)
+    focusRow = currentChannelFocusRow()
+    if focusRow < 0 then focusRow = 0
+    applyGuideDataToRowsNear(focusRow, true)
+    if preserveFocus and focusRow >= 0 then updateCategoryLabelText(focusRow)
     updateGuidePanelForFocusedItem()
 end sub
 
@@ -1630,14 +1694,12 @@ sub updateGuidePanelForFocusedItem()
     timeStart = currentGuideWindowStart()
     updateGuideTimeHeaders(timeStart)
     m.nodes.GuidePanel.Container.visible = true
-    if m.nodes.GuidePanel.RightFade <> invalid then m.nodes.GuidePanel.RightFade.visible = true
 end sub
 
 sub hideGuidePanel()
     if m.nodes = invalid then return
     if m.nodes.GuidePanel = invalid then return
     m.nodes.GuidePanel.Container.visible = false
-    if m.nodes.GuidePanel.RightFade <> invalid then m.nodes.GuidePanel.RightFade.visible = false
 end sub
 
 function cleanGuideText(value as dynamic) as string
@@ -1747,6 +1809,7 @@ end sub
 
 function guideProgramX(startSeconds as integer, windowStart as integer) as integer
     effectiveStart = startSeconds
+    if effectiveStart > windowStart and effectiveStart - windowStart <= 300 then effectiveStart = windowStart
     if effectiveStart < windowStart then effectiveStart = windowStart
     offset = effectiveStart - windowStart
     if offset < 0 then offset = 0
@@ -1756,6 +1819,7 @@ end function
 
 function guideProgramWidth(startSeconds as integer, stopSeconds as integer, windowStart as integer) as integer
     effectiveStart = startSeconds
+    if effectiveStart > windowStart and effectiveStart - windowStart <= 300 then effectiveStart = windowStart
     if effectiveStart < windowStart then effectiveStart = windowStart
 
     effectiveStop = stopSeconds
