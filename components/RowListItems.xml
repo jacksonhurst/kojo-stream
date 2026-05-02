@@ -52,5 +52,6 @@
                 key="[0,1]"
                 keyValue="[[0,0],[0,0]]" />
         </Animation>
+        <Timer id="GuideSlideResetTimer" duration="0.22" repeat="false" />
     </children>
 </component>

@@ -695,9 +695,9 @@ function playbackItemsMatch(currentItem as object, selectedItem as object) as bo
 end function
 
 sub applyPipVideoLayout()
-    m.nodes.Video.translation = [1320,0]
-    m.nodes.Video.width = 560
-    m.nodes.Video.height = 315
+    m.nodes.Video.translation = [1240,0]
+    m.nodes.Video.width = 640
+    m.nodes.Video.height = 360
 end sub
 
 sub setFullScreen(state)
@@ -805,21 +805,21 @@ sub positionPlaybackStatusOverlay()
         nodes.Subtitle.width = 900
         nodes.Subtitle.height = 44
     else
-        nodes.Overlay.translation = [1320,0]
-        nodes.Backdrop.width = 560
-        nodes.Backdrop.height = 315
-        nodes.Card.translation = [50,68]
-        nodes.Card.width = 460
-        nodes.Card.height = 190
-        nodes.Icon.translation = [180,82]
-        nodes.Icon.width = 200
-        nodes.Icon.height = 58
-        nodes.Title.translation = [45,158]
-        nodes.Title.width = 470
-        nodes.Title.height = 40
-        nodes.Subtitle.translation = [45,210]
-        nodes.Subtitle.width = 470
-        nodes.Subtitle.height = 36
+        nodes.Overlay.translation = [1240,0]
+        nodes.Backdrop.width = 640
+        nodes.Backdrop.height = 360
+        nodes.Card.translation = [58,78]
+        nodes.Card.width = 524
+        nodes.Card.height = 216
+        nodes.Icon.translation = [205,94]
+        nodes.Icon.width = 230
+        nodes.Icon.height = 67
+        nodes.Title.translation = [52,181]
+        nodes.Title.width = 536
+        nodes.Title.height = 46
+        nodes.Subtitle.translation = [52,241]
+        nodes.Subtitle.width = 536
+        nodes.Subtitle.height = 42
     end if
 end sub
 

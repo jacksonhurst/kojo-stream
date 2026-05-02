@@ -8,6 +8,7 @@ sub init()
     m.GuideContent = m.top.findNode("guideContent")
     m.GuideSlide = m.top.findNode("GuideSlideAnimation")
     m.GuideSlideInterpolator = m.top.findNode("GuideSlideInterpolator")
+    m.GuideSlideResetTimer = m.top.findNode("GuideSlideResetTimer")
     m.guideBaseX = 0
     m.guideGridWidth = 1300
     m.guideRowHeight = 95
@@ -21,6 +22,7 @@ sub init()
     m.top.observeField("height", "updateSize")
     m.top.observeField("width", "updateSize")
     m.Poster.observeField("loadStatus", "onPosterLoadStatus")
+    if m.GuideSlideResetTimer <> invalid then m.GuideSlideResetTimer.observeField("fire", "resetGuideSlide")
 end sub
 
 sub updateContent()
@@ -198,6 +200,11 @@ sub animateGuideSlide(content as object, animate as boolean)
     m.GuideContent.translation = [m.guideBaseX + offset, 0]
     m.GuideSlideInterpolator.keyValue = [[m.guideBaseX + offset, 0], [m.guideBaseX, 0]]
     m.GuideSlide.control = "start"
+    if m.GuideSlideResetTimer <> invalid then m.GuideSlideResetTimer.control = "start"
+end sub
+
+sub resetGuideSlide()
+    if m.GuideContent <> invalid then m.GuideContent.translation = [m.guideBaseX, 0]
 end sub
 
 function getGuideTitle(content as object, index as integer) as string

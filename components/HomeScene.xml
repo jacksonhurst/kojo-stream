@@ -24,9 +24,9 @@
         <!-- PIP Video player -->
         <Video
             id="Video"
-            translation="[1320,0]"
-            width="560"
-            height="315"
+            translation="[1240,0]"
+            width="640"
+            height="360"
             enableUI="false"
             loop="true"
             enableTrickPlay="true" />
@@ -90,7 +90,7 @@
                 opacity="0.9" />
             <Label
                 id="GuideTimeHeader0"
-                translation="[18,0]"
+                translation="[12,0]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -98,7 +98,7 @@
                 vertAlign="center" />
             <Label
                 id="GuideTimeHeader1"
-                translation="[343,0]"
+                translation="[337,0]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -106,7 +106,7 @@
                 vertAlign="center" />
             <Label
                 id="GuideTimeHeader2"
-                translation="[668,0]"
+                translation="[662,0]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -114,7 +114,7 @@
                 vertAlign="center" />
             <Label
                 id="GuideTimeHeader3"
-                translation="[993,0]"
+                translation="[987,0]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -206,26 +206,26 @@
         <!-- Playback status overlay for channel loading/failure -->
         <Group
             id="PlaybackStatusOverlay"
-            translation="[1320,0]"
+            translation="[1240,0]"
             visible="false">
             <Rectangle
                 id="PlaybackStatusBackdrop"
-                width="560"
-                height="315"
+                width="640"
+                height="360"
                 color="0x000000FF"
                 opacity="0.78" />
             <Rectangle
                 id="PlaybackStatusCard"
-                translation="[50,68]"
-                width="460"
-                height="190"
+                translation="[58,78]"
+                width="524"
+                height="216"
                 color="0x121820FF"
                 opacity="0.92" />
             <Label
                 id="PlaybackStatusIcon"
-                translation="[180,82]"
-                width="200"
-                height="58"
+                translation="[205,94]"
+                width="230"
+                height="67"
                 text="..."
                 font="font:MediumBoldSystemFont"
                 color="0xFFFFFFFF"
@@ -233,9 +233,9 @@
                 vertAlign="center" />
             <Label
                 id="PlaybackStatusTitle"
-                translation="[45,158]"
-                width="470"
-                height="40"
+                translation="[52,181]"
+                width="536"
+                height="46"
                 text="Loading channel"
                 font="font:MediumBoldSystemFont"
                 color="0xFFFFFFFF"
@@ -243,9 +243,9 @@
                 vertAlign="center" />
             <Label
                 id="PlaybackStatusSubtitle"
-                translation="[45,210]"
-                width="470"
-                height="36"
+                translation="[52,241]"
+                width="536"
+                height="42"
                 text="Preparing stream"
                 font="font:SmallSystemFont"
                 color="0xC9D4E5FF"
