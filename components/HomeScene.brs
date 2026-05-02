@@ -53,7 +53,7 @@ sub init()
     m.guideGridWidth = 1300
     m.guideWindowSeconds = 7200
     m.guideTimeOffsetSeconds = 0
-    m.guideStepSeconds = 7200
+    m.guideStepSeconds = 1800
     m.guideMaxOffsetSeconds = 86400
     m.fastScrollKey = ""
     m.fastScrollTicks = 0
