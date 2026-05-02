@@ -13,6 +13,7 @@ sub init()
         },
         GuidePanel: {
             Container: m.top.findNode("GuidePanel"),
+            RightFade: m.top.findNode("GuideRightFade"),
             TimeHeaders: [
                 m.top.findNode("GuideTimeHeader0"),
                 m.top.findNode("GuideTimeHeader1"),
@@ -55,6 +56,7 @@ sub init()
     m.guideTimeOffsetSeconds = 0
     m.guideStepSeconds = 1800
     m.guideMaxOffsetSeconds = 86400
+    m.guideSlideOffset = 0
     m.fastScrollKey = ""
     m.fastScrollTicks = 0
 
@@ -498,13 +500,23 @@ end sub
 function buildLoadedChannelsText() as string
     countText = "Channels loaded: " + m.totalChannels.toStr()
     if m.guideTimeOffsetSeconds <> invalid and m.guideTimeOffsetSeconds > 0 then
-        hoursAhead = int(m.guideTimeOffsetSeconds / 3600)
-        countText = countText + "  |  Guide +" + hoursAhead.toStr() + "h"
+        countText = countText + "  |  Guide +" + formatGuideOffset(m.guideTimeOffsetSeconds)
     end if
     if m.currentGuideTitle <> invalid and m.currentGuideTitle <> "" then
         return m.currentGuideTitle + "  |  " + countText
     end if
     return countText
+end function
+
+function formatGuideOffset(offsetSeconds as integer) as string
+    if offsetSeconds <= 0 then return "0m"
+    totalMinutes = int(offsetSeconds / 60)
+    hours = int(totalMinutes / 60)
+    minutes = totalMinutes - (hours * 60)
+
+    if hours > 0 and minutes > 0 then return hours.toStr() + "h" + minutes.toStr() + "m"
+    if hours > 0 then return hours.toStr() + "h"
+    return minutes.toStr() + "m"
 end function
 
 sub showLoadedChannelsText()
@@ -1400,25 +1412,33 @@ sub applyGuideDataToVisibleRows(preserveFocus as boolean)
                 clearGuideFields(ch)
                 epg = lookupEpgForChannel(ch)
                 if epg <> invalid then
-                    guideInfo = currentGuideInfo(epg)
-                    ch.epgNow = guideInfo.nowTitle
-                    ch.epgNext = guideInfo.nextTitle
+                    if m.guideSlideOffset = 0 or ch.epgNow = invalid then
+                        guideInfo = currentGuideInfo(epg)
+                        ch.epgNow = guideInfo.nowTitle
+                        ch.epgNext = guideInfo.nextTitle
+                    end if
                     populateGuideFields(ch, epg)
                 else
                     ch.epgNow = ""
                     ch.epgNext = ""
                 end if
+
+                ch.guideSlideOffset = m.guideSlideOffset
+                version = 0
+                if ch.guideVersion <> invalid then version = int(ch.guideVersion)
+                ch.guideVersion = version + 1
             end if
         end if
     end for
 
-    m.nodes.RowList.content = m.content
-    if preserveFocus then restoreChannelFocusRow(focusRow)
+    if preserveFocus and focusRow >= 0 then updateCategoryLabel(focusRow)
 end sub
 
 sub ensureGuideFields(ch as object)
     if ch = invalid then return
     if ch.guideVisible = invalid then ch.addField("guideVisible", "boolean", true)
+    if ch.guideVersion = invalid then ch.addField("guideVersion", "integer", true)
+    if ch.guideSlideOffset = invalid then ch.addField("guideSlideOffset", "integer", true)
 
     if ch.guide0Title = invalid then ch.addField("guide0Title", "string", true)
     if ch.guide0Time = invalid then ch.addField("guide0Time", "string", true)
@@ -1501,9 +1521,19 @@ function moveGuideWindow(deltaSeconds as integer) as boolean
     if nextOffset = m.guideTimeOffsetSeconds then return true
 
     m.guideTimeOffsetSeconds = nextOffset
+    m.guideSlideOffset = guideSlideOffsetForDelta(deltaSeconds)
     refreshGuideWindow(true)
+    m.guideSlideOffset = 0
     showLoadedChannelsText()
     return true
+end function
+
+function guideSlideOffsetForDelta(deltaSeconds as integer) as integer
+    if deltaSeconds = 0 then return 0
+    offset = int((deltaSeconds * m.guideGridWidth) / m.guideWindowSeconds)
+    if offset > m.guideGridWidth then offset = m.guideGridWidth
+    if offset < -m.guideGridWidth then offset = -m.guideGridWidth
+    return offset
 end function
 
 sub setGuideField(ch as object, index as integer, title as string, timeText as string, x as integer, width as integer)
@@ -1600,12 +1630,14 @@ sub updateGuidePanelForFocusedItem()
     timeStart = currentGuideWindowStart()
     updateGuideTimeHeaders(timeStart)
     m.nodes.GuidePanel.Container.visible = true
+    if m.nodes.GuidePanel.RightFade <> invalid then m.nodes.GuidePanel.RightFade.visible = true
 end sub
 
 sub hideGuidePanel()
     if m.nodes = invalid then return
     if m.nodes.GuidePanel = invalid then return
     m.nodes.GuidePanel.Container.visible = false
+    if m.nodes.GuidePanel.RightFade <> invalid then m.nodes.GuidePanel.RightFade.visible = false
 end sub
 
 function cleanGuideText(value as dynamic) as string
@@ -1629,43 +1661,74 @@ function guideProgramsForWindow(epg as object, windowStart as integer, windowEnd
     if type(epg) <> "roAssociativeArray" then return result
     if not epg.doesExist("programs") or epg.programs = invalid then return result
 
-    lastSort = -1
+    for each pr in epg.programs
+        if pr <> invalid then
+            startSeconds = getGuideProgramSeconds(pr, "start")
+            stopSeconds = getGuideProgramSeconds(pr, "stop")
+            title = getGuideProgramTitle(pr)
+            if stopSeconds <= startSeconds then stopSeconds = startSeconds + 1800
 
-    for slotIndex = 0 to maxCount - 1
-        bestTitle = ""
-        bestStart = 0
-        bestStop = 0
-        bestSort = -1
+            if title <> "" and startSeconds < windowEnd and stopSeconds > windowStart then
+                sortValue = startSeconds
+                if sortValue < windowStart then sortValue = windowStart
+                candidate = {
+                    title: title
+                    startSeconds: startSeconds
+                    stopSeconds: stopSeconds
+                    sortSeconds: sortValue
+                }
+                addGuideProgramCandidate(result, candidate, maxCount)
+            end if
+        end if
+    end for
 
-        for each pr in epg.programs
-            if pr <> invalid then
-                startSeconds = getGuideProgramSeconds(pr, "start")
-                stopSeconds = getGuideProgramSeconds(pr, "stop")
-                title = getGuideProgramTitle(pr)
-                if stopSeconds <= startSeconds then stopSeconds = startSeconds + 1800
+    sortGuideProgramsByStart(result)
+    return result
+end function
 
-                if title <> "" and startSeconds < windowEnd and stopSeconds > windowStart then
-                    sortValue = startSeconds
-                    if sortValue < windowStart then sortValue = windowStart
-                    if sortValue > lastSort then
-                        if bestSort = -1 or sortValue < bestSort then
-                            bestSort = sortValue
-                            bestTitle = title
-                            bestStart = startSeconds
-                            bestStop = stopSeconds
-                        end if
-                    end if
-                end if
+sub addGuideProgramCandidate(result as object, candidate as object, maxCount as integer)
+    if result.count() < maxCount then
+        result.push(candidate)
+        return
+    end if
+
+    worstIndex = -1
+    worstSort = -1
+    for i = 0 to result.count() - 1
+        item = result[i]
+        if item <> invalid and item.sortSeconds <> invalid then
+            if worstIndex < 0 or item.sortSeconds > worstSort then
+                worstIndex = i
+                worstSort = item.sortSeconds
+            end if
+        end if
+    end for
+
+    if worstIndex >= 0 and candidate.sortSeconds < worstSort then result[worstIndex] = candidate
+end sub
+
+sub sortGuideProgramsByStart(programs as object)
+    if programs = invalid then return
+    count = programs.count()
+    if count < 2 then return
+
+    for i = 0 to count - 2
+        minIndex = i
+        minSort = programs[i].sortSeconds
+        for j = i + 1 to count - 1
+            if programs[j].sortSeconds < minSort then
+                minIndex = j
+                minSort = programs[j].sortSeconds
             end if
         end for
 
-        if bestSort = -1 then exit for
-        result.push({title: bestTitle, startSeconds: bestStart, stopSeconds: bestStop})
-        lastSort = bestSort
+        if minIndex <> i then
+            temp = programs[i]
+            programs[i] = programs[minIndex]
+            programs[minIndex] = temp
+        end if
     end for
-
-    return result
-end function
+end sub
 
 function currentGuideWindowStart() as integer
     nowSeconds = currentEpochSeconds()
@@ -1826,7 +1889,7 @@ end function
 sub renderContent(sourceContent as object)
     m.searchActive = false
     m.searchTerm = ""
-    m.content.removeChildrenIndex(m.content.getChildCount(), 0)
+    m.content = createObject("roSGNode", "ContentNode")
     channels = 0
     m.currentGuideTitle = ""
 
@@ -1854,8 +1917,10 @@ sub renderContent(sourceContent as object)
         end for
     end for
 
-    m.nodes.RowList.content = m.content
     m.totalChannels = channels
+    m.guideSlideOffset = 0
+    applyGuideDataToVisibleRows(false)
+    m.nodes.RowList.content = m.content
     showLoadedChannelsText()
     m.nodes.LoadingAnim1.control = "stop"
     m.nodes.LoadingAnim2.control = "stop"
@@ -1867,7 +1932,6 @@ sub renderContent(sourceContent as object)
     m.nodes.Labels.Category.text = "Channels"
     m.nodes.Labels.Category2.text = ""
 
-    applyGuideDataToVisibleRows(false)
     print "Content loaded: "; channels; " channels in vertical list"
 end sub
 
@@ -1877,7 +1941,7 @@ sub filterContent(term)
     if m.LoadTask = invalid or m.LoadTask.content = invalid then return
     m.searchActive = true
     m.searchTerm = term
-    m.content.removeChildrenIndex(m.content.getChildCount(), 0)
+    m.content = createObject("roSGNode", "ContentNode")
     termLower = lcase(term)
     count = 0
     for each cat in m.LoadTask.content.getChildren(-1, 0)

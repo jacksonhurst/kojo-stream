@@ -122,6 +122,15 @@
                 vertAlign="center" />
         </Group>
 
+        <Group
+            id="GuideRightFade"
+            translation="[1760,360]"
+            visible="false">
+            <Rectangle translation="[0,0]" width="45" height="672" color="0x02070CFF" opacity="0.2" />
+            <Rectangle translation="[45,0]" width="45" height="672" color="0x02070CFF" opacity="0.42" />
+            <Rectangle translation="[90,0]" width="70" height="672" color="0x02070CFF" opacity="0.72" />
+        </Group>
+
         <!-- Side menu -->
         <Group id="SideMenu">
             <Rectangle

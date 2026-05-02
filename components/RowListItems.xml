@@ -29,7 +29,9 @@
         <Group
             id="guideGroup"
             translation="[560,0]"
-            clippingRect="[0,0,1300,95]" />
+            clippingRect="[0,0,1300,95]">
+            <Group id="guideContent" />
+        </Group>
 
         <Animation
             id="LoadingAnimation"
@@ -39,6 +41,16 @@
                 fieldToInterp="poster.opacity"
                 key="[0,0.5,1]"
                 keyValue="[1.0,0.3,1.0]" />
+        </Animation>
+        <Animation
+            id="GuideSlideAnimation"
+            duration="0.18"
+            repeat="false">
+            <Vector2DFieldInterpolator
+                id="GuideSlideInterpolator"
+                fieldToInterp="guideContent.translation"
+                key="[0,1]"
+                keyValue="[[0,0],[0,0]]" />
         </Animation>
     </children>
 </component>

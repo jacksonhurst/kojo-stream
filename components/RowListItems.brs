@@ -5,9 +5,15 @@ sub init()
     m.TitleLabel = m.top.findNode("titleLabel")
     m.MetaLabel = m.top.findNode("metaLabel")
     m.GuideGroup = m.top.findNode("guideGroup")
+    m.GuideContent = m.top.findNode("guideContent")
+    m.GuideSlide = m.top.findNode("GuideSlideAnimation")
+    m.GuideSlideInterpolator = m.top.findNode("GuideSlideInterpolator")
+    m.guideBaseX = 0
     m.guideGridWidth = 1300
     m.guideRowHeight = 95
     m.guideProgramSlots = 6
+    m.observedGuideContent = invalid
+    m.lastAnimatedGuideVersion = -1
     createGuideCells()
     m.Poster.uri = "pkg:/images/loading.png"
     m.currentUri = "pkg:/images/loading.png"
@@ -19,6 +25,7 @@ end sub
 
 sub updateContent()
     content = m.top.itemContent
+    observeGuideContent(content)
     if content <> invalid
         if content.isLoading = true
             m.Poster.uri = "pkg:/images/loading.png"
@@ -41,7 +48,7 @@ sub updateContent()
 
             m.TitleLabel.text = title
             m.MetaLabel.text = meta
-            renderGuideCells(content)
+            renderGuideCells(content, false)
             if content.HDPosterUrl <> invalid and content.HDPosterUrl <> "" and content.HDPosterUrl <> m.currentUri
                 m.Poster.loadWidth = 133
                 m.Poster.loadHeight = 75
@@ -55,9 +62,25 @@ sub updateContent()
     end if
 end sub
 
+sub observeGuideContent(content as object)
+    if m.observedGuideContent <> invalid then
+        m.observedGuideContent.unobserveField("guideVersion")
+        m.observedGuideContent = invalid
+    end if
+
+    if content <> invalid and content.guideVersion <> invalid then
+        content.observeField("guideVersion", "onGuideFieldsChanged")
+        m.observedGuideContent = content
+    end if
+end sub
+
+sub onGuideFieldsChanged()
+    renderGuideCells(m.top.itemContent, true)
+end sub
+
 sub createGuideCells()
-    if m.GuideGroup = invalid then return
-    m.GuideGroup.removeChildrenIndex(m.GuideGroup.getChildCount(), 0)
+    if m.GuideContent = invalid then return
+    m.GuideContent.removeChildrenIndex(m.GuideContent.getChildCount(), 0)
     m.guideCells = []
 
     for i = 0 to m.guideProgramSlots - 1
@@ -87,13 +110,13 @@ sub createGuideCells()
         timeLabel.vertAlign = "center"
         cellGroup.appendChild(timeLabel)
 
-        m.GuideGroup.appendChild(cellGroup)
+        m.GuideContent.appendChild(cellGroup)
         m.guideCells.push({container: cellGroup, background: cellBackground, title: titleLabel, time: timeLabel})
     end for
 end sub
 
-sub renderGuideCells(content as object)
-    if m.GuideGroup = invalid then return
+sub renderGuideCells(content as object, animate as boolean)
+    if m.GuideGroup = invalid or m.GuideContent = invalid then return
     if content = invalid then
         hideGuideCells()
         return
@@ -134,16 +157,47 @@ sub renderGuideCells(content as object)
             cell.time.text = ""
         end if
     end for
+
+    animateGuideSlide(content, animate)
 end sub
 
 sub hideGuideCells()
     if m.guideCells = invalid then return
+    if m.GuideSlide <> invalid then m.GuideSlide.control = "stop"
+    if m.GuideContent <> invalid then m.GuideContent.translation = [m.guideBaseX, 0]
     for each cell in m.guideCells
         cell.container.visible = false
         cell.container.clippingRect = [0, 0, 1, 1]
         cell.title.text = ""
         cell.time.text = ""
     end for
+end sub
+
+sub animateGuideSlide(content as object, animate as boolean)
+    if m.GuideContent = invalid then return
+
+    if not animate then
+        m.GuideContent.translation = [m.guideBaseX, 0]
+        if content <> invalid and content.guideVersion <> invalid then m.lastAnimatedGuideVersion = int(content.guideVersion)
+        return
+    end if
+
+    version = -1
+    if content <> invalid and content.guideVersion <> invalid then version = int(content.guideVersion)
+    if version = m.lastAnimatedGuideVersion then return
+    m.lastAnimatedGuideVersion = version
+
+    offset = 0
+    if content <> invalid and content.guideSlideOffset <> invalid then offset = int(content.guideSlideOffset)
+    if offset = 0 or m.GuideSlide = invalid or m.GuideSlideInterpolator = invalid then
+        m.GuideContent.translation = [m.guideBaseX, 0]
+        return
+    end if
+
+    m.GuideSlide.control = "stop"
+    m.GuideContent.translation = [m.guideBaseX + offset, 0]
+    m.GuideSlideInterpolator.keyValue = [[m.guideBaseX + offset, 0], [m.guideBaseX, 0]]
+    m.GuideSlide.control = "start"
 end sub
 
 function getGuideTitle(content as object, index as integer) as string
