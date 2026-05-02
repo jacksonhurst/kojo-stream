@@ -125,11 +125,11 @@
         <!-- TV guide grid for the visible channel rows -->
         <Group
             id="GuidePanel"
-            translation="[620,360]"
+            translation="[680,360]"
             visible="false">
             <Rectangle
                 id="GuideHeaderBackdrop"
-                width="1300"
+                width="1240"
                 height="44"
                 color="0x08111BFF"
                 opacity="0.9" />

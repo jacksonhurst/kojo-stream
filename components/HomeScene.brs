@@ -64,6 +64,7 @@ sub init()
     m.guideMaxOffsetSeconds = 86400
     m.guideSlideOffset = 0
     m.selectedGuideRow = -1
+    m.guideSlideClearDelaySeconds = 0.36
     m.fastScrollKey = ""
     m.fastScrollTicks = 0
 
@@ -144,6 +145,12 @@ sub init()
     m.fastScrollTimer.repeat = true
     m.fastScrollTimer.observeField("fire", "continueFastChannelScroll")
     m.top.appendChild(m.fastScrollTimer)
+
+    m.guideSlideClearTimer = createObject("roSGNode", "Timer")
+    m.guideSlideClearTimer.duration = m.guideSlideClearDelaySeconds
+    m.guideSlideClearTimer.repeat = false
+    m.guideSlideClearTimer.observeField("fire", "clearGuideSlideOffsets")
+    m.top.appendChild(m.guideSlideClearTimer)
 
     ' Set up PlaylistManager observer
     m.nodes.PlaylistManager.observeField("selectedUrl", "onPlaylistSelected")
@@ -1521,6 +1528,13 @@ sub applyGuideDataToRow(row as integer, windowStart as integer, forceUpdate as b
             ch.epgNext = guideInfo.nextTitle
         end if
         populateGuideFieldsForWindow(ch, epg, windowStart)
+        if row = currentChannelFocusRow() then
+            selected = selectedProgramForWindow(epg, windowStart)
+            if selected <> invalid then
+                ch.guideSelectedIndex = selected.index
+                m.selectedGuideRow = row
+            end if
+        end if
     else
         ch.epgNow = ""
         ch.epgNext = ""
@@ -1642,18 +1656,43 @@ function moveGuideWindow(deltaSeconds as integer) as boolean
     if m.epgByChannel = invalid or type(m.epgByChannel) <> "roAssociativeArray" then return false
     if m.epgByChannel.count() = 0 then return false
 
+    previousWindowStart = currentGuideWindowStart()
+    previousProgramKey = selectedProgramKeyForFocusedRow(previousWindowStart)
+
     nextOffset = m.guideTimeOffsetSeconds + deltaSeconds
     if nextOffset < 0 then nextOffset = 0
     if nextOffset > m.guideMaxOffsetSeconds then nextOffset = m.guideMaxOffsetSeconds
     if nextOffset = m.guideTimeOffsetSeconds then return true
 
     m.guideTimeOffsetSeconds = nextOffset
-    m.guideSlideOffset = guideSlideOffsetForDelta(deltaSeconds)
+    nextWindowStart = currentGuideWindowStart()
+    nextProgramKey = selectedProgramKeyForFocusedRow(nextWindowStart)
+
+    slideOffset = guideSlideOffsetForDelta(deltaSeconds)
+    if previousProgramKey <> "" and previousProgramKey = nextProgramKey then slideOffset = 0
+
+    m.guideSlideOffset = slideOffset
     refreshGuideWindow(true)
+    if m.guideSlideOffset <> 0 then
+        m.guideSlideClearTimer.control = "stop"
+        m.guideSlideClearTimer.control = "start"
+    end if
     m.guideSlideOffset = 0
     showLoadedChannelsText()
     return true
 end function
+
+sub clearGuideSlideOffsets()
+    if m.content = invalid then return
+
+    rowCount = m.content.getChildCount()
+    if rowCount = 0 then return
+
+    for i = 0 to rowCount - 1
+        ch = m.content.getChild(i)
+        if ch <> invalid and ch.guideSlideOffset <> invalid and int(ch.guideSlideOffset) <> 0 then ch.guideSlideOffset = 0
+    end for
+end sub
 
 function guideSlideOffsetForDelta(deltaSeconds as integer) as integer
     if deltaSeconds = 0 then return 0
@@ -1813,6 +1852,33 @@ function selectedProgramForWindow(epg as object, windowStart as integer) as obje
     end for
 
     return {program: programs[selectedIndex], index: selectedIndex}
+end function
+
+function selectedProgramKeyForFocusedRow(windowStart as integer) as string
+    row = currentChannelFocusRow()
+    if row < 0 or m.content = invalid or row >= m.content.getChildCount() then return ""
+
+    ch = m.content.getChild(row)
+    if ch = invalid or ch.isLoading then return ""
+
+    epg = lookupEpgForChannel(ch)
+    selected = selectedProgramForWindow(epg, windowStart)
+    if selected = invalid or selected.program = invalid then return ""
+
+    return guideProgramKey(selected.program)
+end function
+
+function guideProgramKey(program as object) as string
+    if program = invalid then return ""
+
+    title = cleanGuideText(program.title)
+    startText = ""
+    stopText = ""
+    if program.startSeconds <> invalid then startText = int(program.startSeconds).toStr()
+    if program.stopSeconds <> invalid then stopText = int(program.stopSeconds).toStr()
+
+    if title = "" and startText = "" and stopText = "" then return ""
+    return title + "|" + startText + "|" + stopText
 end function
 
 sub setSelectedGuideRow(row as integer, selectedIndex as integer)
