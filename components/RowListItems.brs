@@ -212,9 +212,9 @@ end sub
 
 sub applyGuideCellStyle(cell as object, selected as boolean)
     if selected then
-        cell.background.color = "0x2F7DD8FF"
+        cell.background.color = "0x214D73FF"
         cell.title.color = "0xFFFFFFFF"
-        cell.time.color = "0xFFFFFFFF"
+        cell.time.color = "0xD7E9FFFF"
     else
         cell.background.color = "0x172A3FFF"
         cell.title.color = "0xFFFFFFFF"

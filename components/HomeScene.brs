@@ -1479,8 +1479,8 @@ sub applyGuideDataToRowsNear(row as integer, forceUpdate as boolean)
     rowCount = m.content.getChildCount()
     if rowCount = 0 then return
 
-    startRow = row - 4
-    endRow = row + 8
+    startRow = row - 1
+    endRow = row + 6
     if startRow < 0 then startRow = 0
     if endRow >= rowCount then endRow = rowCount - 1
     applyGuideDataToRowRange(startRow, endRow, forceUpdate)
@@ -1509,6 +1509,7 @@ sub applyGuideDataToRow(row as integer, windowStart as integer, forceUpdate as b
     if ch = invalid or ch.isLoading then return
 
     ensureGuideFields(ch)
+    if row <> m.selectedGuideRow and ch.guideSelectedIndex <> invalid and int(ch.guideSelectedIndex) <> -1 then ch.guideSelectedIndex = -1
     if not forceUpdate and m.guideSlideOffset = 0 and ch.guideWindowStart <> invalid and int(ch.guideWindowStart) = windowStart then return
 
     clearGuideFields(ch)
@@ -1555,7 +1556,10 @@ sub ensureGuideFields(ch as object)
     if ch.guideVersion = invalid then ch.addField("guideVersion", "integer", true)
     if ch.guideSlideOffset = invalid then ch.addField("guideSlideOffset", "integer", true)
     if ch.guideWindowStart = invalid then ch.addField("guideWindowStart", "integer", true)
-    if ch.guideSelectedIndex = invalid then ch.addField("guideSelectedIndex", "integer", true)
+    if ch.guideSelectedIndex = invalid then
+        ch.addField("guideSelectedIndex", "integer", true)
+        ch.guideSelectedIndex = -1
+    end if
 
     if ch.guide0Title = invalid then ch.addField("guide0Title", "string", true)
     if ch.guide0Time = invalid then ch.addField("guide0Time", "string", true)
@@ -1609,6 +1613,10 @@ sub populateGuideFieldsForWindow(ch as object, epg as object, windowStart as int
         program = programs[i]
         x = guideProgramX(program.startSeconds, windowStart)
         width = guideProgramWidth(program.startSeconds, program.stopSeconds, windowStart)
+        if i = 0 and x > 0 then
+            width = width + x
+            x = 0
+        end if
         if width < 80 then width = 80
         if x + width > m.guideGridWidth then width = m.guideGridWidth - x
         if width < 40 then
@@ -1912,6 +1920,8 @@ function guideProgramsForWindow(epg as object, windowStart as integer, windowEnd
             title = getGuideProgramTitle(pr)
             if stopSeconds <= startSeconds then stopSeconds = startSeconds + 1800
 
+            if startSeconds >= windowEnd then exit for
+
             if title <> "" and startSeconds < windowEnd and stopSeconds > windowStart then
                 sortValue = startSeconds
                 if sortValue < windowStart then sortValue = windowStart
@@ -1926,7 +1936,8 @@ function guideProgramsForWindow(epg as object, windowStart as integer, windowEnd
                     stopSeconds: stopSeconds
                     sortSeconds: sortValue
                 }
-                addGuideProgramCandidate(result, candidate, maxCount)
+                result.push(candidate)
+                if result.count() >= maxCount then exit for
             end if
         end if
     end for

@@ -110,6 +110,8 @@ function buildGuideMap(root as object) as object
         end if
     end for
 
+    sortGuideMapPrograms(guide)
+
     for each id in channelNameById
         nameKey = channelNameById[id]
         if nameKey <> "" and guide.doesExist(id) and not guide.doesExist(nameKey) then
@@ -118,6 +120,45 @@ function buildGuideMap(root as object) as object
     end for
 
     return guide
+end function
+
+sub sortGuideMapPrograms(guide as object)
+    if guide = invalid then return
+
+    for each id in guide
+        entry = guide[id]
+        if entry <> invalid and entry.programs <> invalid then sortXmltvProgramsByStart(entry.programs)
+    end for
+end sub
+
+sub sortXmltvProgramsByStart(programs as object)
+    if programs = invalid then return
+    count = programs.count()
+    if count < 2 then return
+
+    for i = 0 to count - 2
+        minIndex = i
+        minStart = xmltvProgramStart(programs[i])
+        for j = i + 1 to count - 1
+            startSeconds = xmltvProgramStart(programs[j])
+            if startSeconds < minStart then
+                minIndex = j
+                minStart = startSeconds
+            end if
+        end for
+
+        if minIndex <> i then
+            temp = programs[i]
+            programs[i] = programs[minIndex]
+            programs[minIndex] = temp
+        end if
+    end for
+end sub
+
+function xmltvProgramStart(program as object) as integer
+    if program = invalid then return 0
+    if program.start = invalid then return 0
+    return int(program.start)
 end function
 
 function createGuideEntry() as object
