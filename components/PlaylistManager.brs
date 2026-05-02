@@ -3,6 +3,8 @@ sub init()
     m.emptyLabel = m.top.findNode("EmptyLabel")
     m.playlists = []
     m.focusIndex = 0
+    m.allowXmltvClear = false
+    m.xmltvClearUrl = ""
     loadPlaylists()
     refreshList()
 end sub
@@ -36,11 +38,54 @@ sub loadPlaylists()
 end sub
 
 sub savePlaylists()
+    preserveExistingXmltvUrls()
     registry = createObject("roRegistrySection", "KojoStream")
     jsonStr = formatJSON(m.playlists)
     registry.write("kojostream_playlists", jsonStr)
     registry.flush()
+    m.allowXmltvClear = false
+    m.xmltvClearUrl = ""
 end sub
+
+sub preserveExistingXmltvUrls()
+    registry = createObject("roRegistrySection", "KojoStream")
+    if not registry.exists("kojostream_playlists") then return
+
+    existingJson = registry.read("kojostream_playlists")
+    if existingJson = invalid or existingJson = "" then return
+
+    existingPlaylists = parseJSON(existingJson)
+    if existingPlaylists = invalid or type(existingPlaylists) <> "roArray" then return
+
+    lastUsedUrl = ""
+    lastXmltvUrl = ""
+    if registry.exists("last_used_url") then lastUsedUrl = safeText(registry.read("last_used_url"))
+    if registry.exists("last_xmltv_url") then lastXmltvUrl = safeText(registry.read("last_xmltv_url"))
+
+    for i = 0 to m.playlists.count() - 1
+        pl = normalizePlaylistEntry(m.playlists[i], i)
+        shouldPreserveXmltv = true
+        if m.allowXmltvClear and pl.url = m.xmltvClearUrl then shouldPreserveXmltv = false
+        if pl.xmltvUrl = "" and shouldPreserveXmltv then
+            recovered = lookupXmltvForPlaylist(existingPlaylists, pl.url)
+            if recovered = "" and pl.url <> "" and pl.url = lastUsedUrl then recovered = lastXmltvUrl
+            if recovered <> "" then pl.xmltvUrl = recovered
+        end if
+        m.playlists[i] = pl
+    end for
+end sub
+
+function lookupXmltvForPlaylist(playlists as object, playlistUrl as string) as string
+    targetUrl = safeText(playlistUrl)
+    if targetUrl = "" or playlists = invalid then return ""
+
+    for each entry in playlists
+        pl = normalizePlaylistEntry(entry, 0)
+        if pl.url = targetUrl and pl.xmltvUrl <> "" then return pl.xmltvUrl
+    end for
+
+    return ""
+end function
 
 sub refreshList()
     content = createObject("roSGNode", "ContentNode")
@@ -203,6 +248,10 @@ sub onEditDialogButton()
     else if m.editMode = "xmltv" then
         editXmltv = ""
         if dialog.buttonSelected = 0 then editXmltv = safeText(dialog.text)
+        if editXmltv = "" then
+            m.allowXmltvClear = true
+            m.xmltvClearUrl = m.editUrl
+        end if
         m.top.getScene().dialog = invalid
 
         m.playlists[m.editIndex] = {name: m.editName, url: m.editUrl, xmltvUrl: editXmltv}

@@ -251,7 +251,11 @@ function resolveXmltvUrlForPlaylist(playlists as object, playlistUrl as string) 
     registry = createObject("roRegistrySection", "KojoStream")
     targetUrl = sanitizeUrl(playlistUrl)
     savedXmltv = ""
-    if registry.exists("last_xmltv_url") then savedXmltv = sanitizeUrl(registry.read("last_xmltv_url"))
+    if registry.exists("last_xmltv_url") then
+        savedForUrl = ""
+        if registry.exists("last_used_url") then savedForUrl = sanitizeUrl(registry.read("last_used_url"))
+        if savedForUrl = "" or savedForUrl = targetUrl then savedXmltv = sanitizeUrl(registry.read("last_xmltv_url"))
+    end if
 
     matchedXmltv = ""
     if playlists <> invalid then
@@ -271,6 +275,28 @@ function resolveXmltvUrlForPlaylist(playlists as object, playlistUrl as string) 
 
     if matchedXmltv <> "" then return matchedXmltv
     if savedXmltv <> "" then return savedXmltv
+    return ""
+end function
+
+function resolveStoredXmltvUrlForPlaylistUrl(playlistUrl as string) as string
+    registry = createObject("roRegistrySection", "KojoStream")
+    if registry.exists("kojostream_playlists") then
+        jsonStr = registry.read("kojostream_playlists")
+        if jsonStr <> invalid and jsonStr <> "" then
+            playlists = parseJSON(jsonStr)
+            if playlists <> invalid then
+                resolved = resolveXmltvUrlForPlaylist(playlists, playlistUrl)
+                if resolved <> "" then return resolved
+            end if
+        end if
+    end if
+
+    if registry.exists("last_xmltv_url") then
+        targetUrl = sanitizeUrl(playlistUrl)
+        savedForUrl = ""
+        if registry.exists("last_used_url") then savedForUrl = sanitizeUrl(registry.read("last_used_url"))
+        if savedForUrl = "" or savedForUrl = targetUrl then return sanitizeUrl(registry.read("last_xmltv_url"))
+    end if
     return ""
 end function
 
@@ -330,6 +356,10 @@ end sub
 ' --- Playlist loading ---
 
 sub startLoadingPlaylist(url as string)
+    url = sanitizeUrl(url)
+    storedXmltv = resolveStoredXmltvUrlForPlaylistUrl(url)
+    if storedXmltv <> "" and (m.currentXmltvUrl = "" or m.global.lastUrl <> url) then m.currentXmltvUrl = storedXmltv
+
     m.global.lastUrl = url
     m.epgByChannel = {}
     m.currentGuideTitle = ""
@@ -389,8 +419,9 @@ end sub
 
 sub onPlaylistSelected()
     url = m.nodes.PlaylistManager.selectedUrl
-    m.currentXmltvUrl = m.nodes.PlaylistManager.selectedXmltv
+    m.currentXmltvUrl = sanitizeUrl(m.nodes.PlaylistManager.selectedXmltv)
     if m.currentXmltvUrl = invalid then m.currentXmltvUrl = ""
+    if m.currentXmltvUrl = "" then m.currentXmltvUrl = resolveStoredXmltvUrlForPlaylistUrl(url)
     if url <> "" then
         showScreen("main")
         startLoadingPlaylist(url)
@@ -398,7 +429,21 @@ sub onPlaylistSelected()
 end sub
 
 sub onPlaylistXmltvSelected()
-    m.currentXmltvUrl = m.nodes.PlaylistManager.selectedXmltv
+    selectedXmltv = sanitizeUrl(m.nodes.PlaylistManager.selectedXmltv)
+    if selectedXmltv <> "" then
+        m.currentXmltvUrl = selectedXmltv
+        return
+    end if
+
+    selectedUrl = sanitizeUrl(m.nodes.PlaylistManager.selectedUrl)
+    if selectedUrl = "" then selectedUrl = sanitizeUrl(m.global.lastUrl)
+    storedXmltv = resolveStoredXmltvUrlForPlaylistUrl(selectedUrl)
+    if storedXmltv <> "" then
+        m.currentXmltvUrl = storedXmltv
+        return
+    end if
+
+    m.currentXmltvUrl = selectedXmltv
     if m.currentXmltvUrl = invalid then m.currentXmltvUrl = ""
 end sub
 
