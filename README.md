@@ -43,7 +43,8 @@ Generated zips are ignored by Git, so rebuilding locally will not dirty the repo
 - `OK`: start the selected channel in the top-right preview.
 - `OK` again on the same playing channel: expand fullscreen.
 - `Back` while preview is playing: expand fullscreen.
-- `Left`: open the side menu.
+- `Right`: move the XMLTV guide window 2 hours into the future, up to 24 hours.
+- `Left`: move the guide window back 2 hours; at the current time, open the side menu.
 
 ### Fullscreen Playback
 

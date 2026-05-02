@@ -24,9 +24,9 @@
         <!-- PIP Video player -->
         <Video
             id="Video"
-            translation="[1200,0]"
-            width="720"
-            height="405"
+            translation="[1320,0]"
+            width="560"
+            height="315"
             enableUI="false"
             loop="true"
             enableTrickPlay="true" />
@@ -55,13 +55,13 @@
                 color="0xFFFFFFFF" />
             <Group
                 id="ChannelListViewport"
-                clippingRect="[0,0,1800,620]">
+                clippingRect="[0,0,1860,620]">
                 <MarkupList
                     id="RowList"
                     itemComponentName="RowListItems"
-                    itemSize="[1800,95]"
+                    itemSize="[1860,95]"
                     itemSpacing="[0,10]"
-                    width="1800"
+                    width="1860"
                     height="620"
                     vertFocusAnimationStyle="fixedFocus"
                     drawFocusFeedback="true" />
@@ -84,7 +84,7 @@
             visible="false">
             <Rectangle
                 id="GuideHeaderBackdrop"
-                width="1240"
+                width="1300"
                 height="44"
                 color="0x08111BFF"
                 opacity="0.9" />
@@ -98,7 +98,7 @@
                 vertAlign="center" />
             <Label
                 id="GuideTimeHeader1"
-                translation="[328,0]"
+                translation="[343,0]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -106,7 +106,7 @@
                 vertAlign="center" />
             <Label
                 id="GuideTimeHeader2"
-                translation="[638,0]"
+                translation="[668,0]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -114,7 +114,7 @@
                 vertAlign="center" />
             <Label
                 id="GuideTimeHeader3"
-                translation="[948,0]"
+                translation="[993,0]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -197,26 +197,26 @@
         <!-- Playback status overlay for channel loading/failure -->
         <Group
             id="PlaybackStatusOverlay"
-            translation="[1200,0]"
+            translation="[1320,0]"
             visible="false">
             <Rectangle
                 id="PlaybackStatusBackdrop"
-                width="720"
-                height="405"
+                width="560"
+                height="315"
                 color="0x000000FF"
                 opacity="0.78" />
             <Rectangle
                 id="PlaybackStatusCard"
-                translation="[80,95]"
-                width="560"
-                height="215"
+                translation="[50,68]"
+                width="460"
+                height="190"
                 color="0x121820FF"
                 opacity="0.92" />
             <Label
                 id="PlaybackStatusIcon"
-                translation="[260,112]"
+                translation="[180,82]"
                 width="200"
-                height="64"
+                height="58"
                 text="..."
                 font="font:MediumBoldSystemFont"
                 color="0xFFFFFFFF"
@@ -224,9 +224,9 @@
                 vertAlign="center" />
             <Label
                 id="PlaybackStatusTitle"
-                translation="[60,190]"
-                width="600"
-                height="44"
+                translation="[45,158]"
+                width="470"
+                height="40"
                 text="Loading channel"
                 font="font:MediumBoldSystemFont"
                 color="0xFFFFFFFF"
@@ -234,9 +234,9 @@
                 vertAlign="center" />
             <Label
                 id="PlaybackStatusSubtitle"
-                translation="[60,242]"
-                width="600"
-                height="42"
+                translation="[45,210]"
+                width="470"
+                height="36"
                 text="Preparing stream"
                 font="font:SmallSystemFont"
                 color="0xC9D4E5FF"

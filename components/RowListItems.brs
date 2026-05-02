@@ -5,7 +5,7 @@ sub init()
     m.TitleLabel = m.top.findNode("titleLabel")
     m.MetaLabel = m.top.findNode("metaLabel")
     m.GuideGroup = m.top.findNode("guideGroup")
-    m.guideGridWidth = 1240
+    m.guideGridWidth = 1300
     m.guideRowHeight = 95
     m.guideProgramSlots = 6
     createGuideCells()

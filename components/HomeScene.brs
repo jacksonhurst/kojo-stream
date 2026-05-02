@@ -50,8 +50,11 @@ sub init()
     }
 
     m.guideProgramSlots = 6
-    m.guideGridWidth = 1240
+    m.guideGridWidth = 1300
     m.guideWindowSeconds = 7200
+    m.guideTimeOffsetSeconds = 0
+    m.guideStepSeconds = 7200
+    m.guideMaxOffsetSeconds = 86400
     m.fastScrollKey = ""
     m.fastScrollTicks = 0
 
@@ -267,20 +270,6 @@ function resolveXmltvUrlForPlaylist(playlists as object, playlistUrl as string) 
 
     if matchedXmltv <> "" then return matchedXmltv
     if savedXmltv <> "" then return savedXmltv
-    inferredXmltv = inferXmltvUrlForPlaylist(targetUrl)
-    if inferredXmltv <> "" then return inferredXmltv
-    return ""
-end function
-
-function inferXmltvUrlForPlaylist(playlistUrl as string) as string
-    url = sanitizeUrl(playlistUrl)
-    if url = "" then return ""
-
-    lowerUrl = lcase(url)
-    if lowerUrl.instr("://drogon.tv/w/") >= 0 then
-        return url.Replace("/w/", "/g/")
-    end if
-
     return ""
 end function
 
@@ -343,6 +332,7 @@ sub startLoadingPlaylist(url as string)
     m.global.lastUrl = url
     m.epgByChannel = {}
     m.currentGuideTitle = ""
+    m.guideTimeOffsetSeconds = 0
     if m.currentXmltvUrl = "" then
         registryForXmltv = createObject("roRegistrySection", "KojoStream")
         if registryForXmltv.exists("kojostream_playlists") then
@@ -355,7 +345,6 @@ sub startLoadingPlaylist(url as string)
             end if
         end if
     end if
-    if m.currentXmltvUrl = "" then m.currentXmltvUrl = inferXmltvUrlForPlaylist(url)
     stopXmltvTimers()
     hidePlaybackStatusOverlay()
 
@@ -508,6 +497,10 @@ end sub
 
 function buildLoadedChannelsText() as string
     countText = "Channels loaded: " + m.totalChannels.toStr()
+    if m.guideTimeOffsetSeconds <> invalid and m.guideTimeOffsetSeconds > 0 then
+        hoursAhead = int(m.guideTimeOffsetSeconds / 3600)
+        countText = countText + "  |  Guide +" + hoursAhead.toStr() + "h"
+    end if
     if m.currentGuideTitle <> invalid and m.currentGuideTitle <> "" then
         return m.currentGuideTitle + "  |  " + countText
     end if
@@ -672,9 +665,7 @@ sub ChannelChange()
         setFullScreen(true)
     else
         if not m.state.isFullScreen then
-            video.translation = [1200,0]
-            video.width = 720
-            video.height = 405
+            applyPipVideoLayout()
             video.enableUI = false
         end if
         startChannelPlayback(item)
@@ -690,6 +681,12 @@ function playbackItemsMatch(currentItem as object, selectedItem as object) as bo
 
     return currentSourceUrl <> "" and currentSourceUrl = selectedSourceUrl
 end function
+
+sub applyPipVideoLayout()
+    m.nodes.Video.translation = [1320,0]
+    m.nodes.Video.width = 560
+    m.nodes.Video.height = 315
+end sub
 
 sub setFullScreen(state)
     stopFastChannelScroll()
@@ -718,9 +715,7 @@ sub setFullScreen(state)
         nodes.Video.setFocus(true)
     else
         nodes.RowList.setFocus(true)
-        nodes.Video.translation = [1200,0]
-        nodes.Video.width = 720
-        nodes.Video.height = 405
+        applyPipVideoLayout()
         nodes.Video.enableUI = false
     end if
 
@@ -798,21 +793,21 @@ sub positionPlaybackStatusOverlay()
         nodes.Subtitle.width = 900
         nodes.Subtitle.height = 44
     else
-        nodes.Overlay.translation = [1200,0]
-        nodes.Backdrop.width = 720
-        nodes.Backdrop.height = 405
-        nodes.Card.translation = [80,95]
-        nodes.Card.width = 560
-        nodes.Card.height = 215
-        nodes.Icon.translation = [260,112]
+        nodes.Overlay.translation = [1320,0]
+        nodes.Backdrop.width = 560
+        nodes.Backdrop.height = 315
+        nodes.Card.translation = [50,68]
+        nodes.Card.width = 460
+        nodes.Card.height = 190
+        nodes.Icon.translation = [180,82]
         nodes.Icon.width = 200
-        nodes.Icon.height = 64
-        nodes.Title.translation = [60,190]
-        nodes.Title.width = 600
-        nodes.Title.height = 44
-        nodes.Subtitle.translation = [60,242]
-        nodes.Subtitle.width = 600
-        nodes.Subtitle.height = 42
+        nodes.Icon.height = 58
+        nodes.Title.translation = [45,158]
+        nodes.Title.width = 470
+        nodes.Title.height = 40
+        nodes.Subtitle.translation = [45,210]
+        nodes.Subtitle.width = 470
+        nodes.Subtitle.height = 36
     end if
 end sub
 
@@ -1234,9 +1229,7 @@ sub onVideoStateChange()
         m.forcePlayTimer.control = "stop"
     end if
     if not m.state.isFullScreen then
-        m.nodes.Video.translation = [1200,0]
-        m.nodes.Video.width = 720
-        m.nodes.Video.height = 405
+        applyPipVideoLayout()
         m.nodes.Video.enableUI = false
         if m.nodes.PlaybackStatus.Overlay.visible then positionPlaybackStatusOverlay()
     end if
@@ -1491,6 +1484,28 @@ sub populateGuideFields(ch as object, epg as object)
     end for
 end sub
 
+sub refreshGuideWindow(preserveFocus as boolean)
+    if m.epgByChannel = invalid or type(m.epgByChannel) <> "roAssociativeArray" then return
+    if m.epgByChannel.count() = 0 then return
+    applyGuideDataToVisibleRows(preserveFocus)
+    updateGuidePanelForFocusedItem()
+end sub
+
+function moveGuideWindow(deltaSeconds as integer) as boolean
+    if m.epgByChannel = invalid or type(m.epgByChannel) <> "roAssociativeArray" then return false
+    if m.epgByChannel.count() = 0 then return false
+
+    nextOffset = m.guideTimeOffsetSeconds + deltaSeconds
+    if nextOffset < 0 then nextOffset = 0
+    if nextOffset > m.guideMaxOffsetSeconds then nextOffset = m.guideMaxOffsetSeconds
+    if nextOffset = m.guideTimeOffsetSeconds then return true
+
+    m.guideTimeOffsetSeconds = nextOffset
+    refreshGuideWindow(true)
+    showLoadedChannelsText()
+    return true
+end function
+
 sub setGuideField(ch as object, index as integer, title as string, timeText as string, x as integer, width as integer)
     if index = 0 then
         ch.guide0Title = title
@@ -1656,7 +1671,7 @@ function currentGuideWindowStart() as integer
     nowSeconds = currentEpochSeconds()
     if nowSeconds <= 0 then return 0
     halfHour = 1800
-    return int(nowSeconds / halfHour) * halfHour
+    return (int(nowSeconds / halfHour) * halfHour) + m.guideTimeOffsetSeconds
 end function
 
 sub updateGuideTimeHeaders(windowStart as integer)
@@ -2042,9 +2057,7 @@ function onKeyEvent(key, press) as boolean
     if m.state.isFullScreen then
         video = m.nodes.Video
         if key = "back" then
-            video.translation = [1200,0]
-            video.width = 720
-            video.height = 405
+            applyPipVideoLayout()
             video.enableUI = false
             setFullScreen(false)
             return true
@@ -2092,7 +2105,13 @@ function onKeyEvent(key, press) as boolean
         if key = "up" or key = "down" then
             return startChannelListScroll(key)
         end if
+        if key = "right" then
+            return moveGuideWindow(m.guideStepSeconds)
+        end if
         if key = "left" then
+            if m.guideTimeOffsetSeconds <> invalid and m.guideTimeOffsetSeconds > 0 then
+                return moveGuideWindow(-m.guideStepSeconds)
+            end if
             m.state.menuFocused = true
             m.nodes.Menu.setFocus(true)
             m.nodes.ExpandMenu.control = "start"

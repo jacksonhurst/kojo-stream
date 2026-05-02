@@ -29,7 +29,7 @@
         <Group
             id="guideGroup"
             translation="[560,0]"
-            clippingRect="[0,0,1240,95]" />
+            clippingRect="[0,0,1300,95]" />
 
         <Animation
             id="LoadingAnimation"
