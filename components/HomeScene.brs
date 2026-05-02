@@ -189,7 +189,7 @@ sub createGuideGridNodes()
             cellBackground.width = 180
             cellBackground.height = m.guideRowHeight
             cellBackground.color = "0x172A3FFF"
-            cellBackground.opacity = 0.92
+            cellBackground.opacity = 1.0
             cellGroup.appendChild(cellBackground)
 
             titleLabel = createObject("roSGNode", "Label")
@@ -197,6 +197,7 @@ sub createGuideGridNodes()
             titleLabel.width = 156
             titleLabel.height = 46
             titleLabel.color = "0xFFFFFFFF"
+            titleLabel.font = "font:SmallSystemFont"
             titleLabel.vertAlign = "center"
             cellGroup.appendChild(titleLabel)
 
@@ -205,6 +206,7 @@ sub createGuideGridNodes()
             timeLabel.width = 156
             timeLabel.height = 26
             timeLabel.color = "0x9FBDE8FF"
+            timeLabel.font = "font:TinySystemFont"
             timeLabel.vertAlign = "center"
             cellGroup.appendChild(timeLabel)
 
@@ -1471,8 +1473,8 @@ sub updateGuidePanelForFocusedItem()
         return
     end if
 
-    row = m.nodes.RowList.itemFocused
-    if row = invalid or row < 0 then row = m.state.lastRow
+    row = m.state.lastRow
+    if row = invalid or row < 0 then row = m.nodes.RowList.itemFocused
     if row = invalid or row < 0 or row >= m.content.getChildCount() then
         hideGuidePanel()
         return
@@ -1541,7 +1543,7 @@ function guideWindowStart(focusedRow as integer) as integer
     totalRows = m.content.getChildCount()
     if totalRows <= 0 then return -1
 
-    startRow = focusedRow - 2
+    startRow = focusedRow
     if startRow < 0 then startRow = 0
 
     maxStart = totalRows - m.guideVisibleRows
@@ -1582,11 +1584,13 @@ sub renderGuideProgramRow(guideRow as object, item as object, windowStart as int
 
         cell.container.translation = [x, 0]
         cell.container.visible = true
+        cell.container.clippingRect = [0, 0, width - 4, m.guideRowHeight]
         cell.background.color = "0x172A3FFF"
+        cell.background.opacity = 1.0
         cell.background.width = width - 4
         cell.title.width = width - 24
         cell.time.width = width - 24
-        cell.title.text = program.title
+        cell.title.text = cleanGuideText(program.title)
         cell.time.text = formatGuideTimeRange(program.startSeconds, program.stopSeconds)
     end for
 end sub
@@ -1596,6 +1600,7 @@ sub clearGuideProgramCells(guideRow as object)
     if guideRow.cells = invalid then return
     for each cell in guideRow.cells
         cell.container.visible = false
+        cell.container.clippingRect = [0, 0, 1, 1]
         cell.title.text = ""
         cell.time.text = ""
     end for
@@ -1608,13 +1613,30 @@ sub renderGuidePlaceholder(guideRow as object, text as string)
     cell = guideRow.cells[0]
     cell.container.translation = [0, 0]
     cell.container.visible = true
+    cell.container.clippingRect = [0, 0, m.guideGridWidth - 4, m.guideRowHeight]
     cell.background.width = m.guideGridWidth - 4
     cell.background.color = "0x101820FF"
+    cell.background.opacity = 1.0
     cell.title.width = m.guideGridWidth - 24
     cell.title.text = text
     cell.time.width = m.guideGridWidth - 24
     cell.time.text = ""
 end sub
+
+function cleanGuideText(value as dynamic) as string
+    if value = invalid then return ""
+    text = value.toStr()
+    text = text.Replace(chr(9), " ")
+    text = text.Replace(chr(10), " ")
+    text = text.Replace(chr(13), " ")
+    text = text.Trim()
+
+    while text.instr("  ") >= 0
+        text = text.Replace("  ", " ")
+    end while
+
+    return text
+end function
 
 function guideProgramsForWindow(epg as object, windowStart as integer, windowEnd as integer, maxCount as integer) as object
     result = []

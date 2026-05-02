@@ -80,17 +80,18 @@
         <!-- TV guide grid for the visible channel rows -->
         <Group
             id="GuidePanel"
-            translation="[620,360]"
+            translation="[620,412]"
             visible="false">
             <Rectangle
                 id="GuideHeaderBackdrop"
+                translation="[0,-52]"
                 width="1240"
                 height="44"
                 color="0x08111BFF"
                 opacity="0.9" />
             <Label
                 id="GuideTimeHeader0"
-                translation="[18,0]"
+                translation="[18,-52]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -98,7 +99,7 @@
                 vertAlign="center" />
             <Label
                 id="GuideTimeHeader1"
-                translation="[328,0]"
+                translation="[328,-52]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -106,7 +107,7 @@
                 vertAlign="center" />
             <Label
                 id="GuideTimeHeader2"
-                translation="[638,0]"
+                translation="[638,-52]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -114,7 +115,7 @@
                 vertAlign="center" />
             <Label
                 id="GuideTimeHeader3"
-                translation="[948,0]"
+                translation="[948,-52]"
                 width="280"
                 height="44"
                 font="font:SmallSystemFont"
@@ -122,7 +123,7 @@
                 vertAlign="center" />
             <Group
                 id="GuideRows"
-                translation="[0,52]"
+                translation="[0,0]"
                 clippingRect="[0,0,1240,620]" />
         </Group>
 
