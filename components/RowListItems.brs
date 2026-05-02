@@ -97,7 +97,7 @@ sub createGuideCells()
         cellGroup.appendChild(cellBackground)
 
         titleLabel = createObject("roSGNode", "Label")
-        titleLabel.translation = [12, 10]
+        titleLabel.translation = [0, 10]
         titleLabel.width = 156
         titleLabel.height = 46
         titleLabel.color = "0xFFFFFFFF"
@@ -105,7 +105,7 @@ sub createGuideCells()
         cellGroup.appendChild(titleLabel)
 
         timeLabel = createObject("roSGNode", "Label")
-        timeLabel.translation = [12, 58]
+        timeLabel.translation = [0, 58]
         timeLabel.width = 156
         timeLabel.height = 26
         timeLabel.color = "0x9FBDE8FF"
@@ -149,8 +149,8 @@ sub renderGuideCells(content as object, animate as boolean)
             cell.container.clippingRect = [0, 0, width - 4, m.guideRowHeight]
             cell.container.visible = true
             cell.background.width = width - 4
-            cell.title.width = width - 24
-            cell.time.width = width - 24
+            cell.title.width = width - 8
+            cell.time.width = width - 8
             cell.title.text = title
             cell.time.text = getGuideTime(content, i)
             isSelected = (i = selectedIndex)

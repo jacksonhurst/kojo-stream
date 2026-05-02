@@ -1996,7 +1996,7 @@ end sub
 
 function guideProgramX(startSeconds as integer, windowStart as integer) as integer
     effectiveStart = startSeconds
-    if effectiveStart > windowStart and effectiveStart - windowStart <= 300 then effectiveStart = windowStart
+    if effectiveStart > windowStart and effectiveStart - windowStart <= 900 then effectiveStart = windowStart
     if effectiveStart < windowStart then effectiveStart = windowStart
     offset = effectiveStart - windowStart
     if offset < 0 then offset = 0
@@ -2006,7 +2006,7 @@ end function
 
 function guideProgramWidth(startSeconds as integer, stopSeconds as integer, windowStart as integer) as integer
     effectiveStart = startSeconds
-    if effectiveStart > windowStart and effectiveStart - windowStart <= 300 then effectiveStart = windowStart
+    if effectiveStart > windowStart and effectiveStart - windowStart <= 900 then effectiveStart = windowStart
     if effectiveStart < windowStart then effectiveStart = windowStart
 
     effectiveStop = stopSeconds
