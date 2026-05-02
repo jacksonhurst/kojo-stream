@@ -41,6 +41,51 @@
             visible="false"
             opacity="0" />
 
+        <!-- Selected XMLTV program details -->
+        <Group
+            id="ProgramInfoPanel"
+            translation="[570,66]"
+            visible="false">
+            <Rectangle
+                id="ProgramInfoBackdrop"
+                width="620"
+                height="250"
+                color="0x07131FFF"
+                opacity="0.82" />
+            <Label
+                id="ProgramInfoTitle"
+                translation="[24,18]"
+                width="572"
+                height="48"
+                font="font:MediumBoldSystemFont"
+                color="0xFFFFFFFF"
+                vertAlign="center" />
+            <Label
+                id="ProgramInfoTime"
+                translation="[24,70]"
+                width="572"
+                height="34"
+                font="font:SmallSystemFont"
+                color="0x8FB8FFFF"
+                vertAlign="center" />
+            <Label
+                id="ProgramInfoMeta"
+                translation="[24,108]"
+                width="572"
+                height="34"
+                font="font:SmallSystemFont"
+                color="0xD8E6FFFF"
+                vertAlign="center" />
+            <Label
+                id="ProgramInfoDescription"
+                translation="[24,148]"
+                width="572"
+                height="84"
+                font="font:SmallSystemFont"
+                color="0xB8C7D9FF"
+                wrap="true" />
+        </Group>
+
         <!-- Channel list layout -->
         <LayoutGroup
             id="CategoryLayout"

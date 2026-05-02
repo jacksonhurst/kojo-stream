@@ -44,7 +44,7 @@
         </Animation>
         <Animation
             id="GuideSlideAnimation"
-            duration="0.18"
+            duration="0.28"
             repeat="false">
             <Vector2DFieldInterpolator
                 id="GuideSlideInterpolator"
@@ -52,6 +52,6 @@
                 key="[0,1]"
                 keyValue="[[0,0],[0,0]]" />
         </Animation>
-        <Timer id="GuideSlideResetTimer" duration="0.22" repeat="false" />
+        <Timer id="GuideSlideResetTimer" duration="0.34" repeat="false" />
     </children>
 </component>

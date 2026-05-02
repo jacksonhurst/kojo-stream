@@ -76,6 +76,10 @@ function buildGuideMap(root as object) as object
             if title = invalid or title = "" then
                 ' skip
             else
+                subtitle = firstElementText(pr, "sub-title")
+                desc = firstElementText(pr, "desc")
+                episodeNum = firstElementText(pr, "episode-num")
+                category = firstElementText(pr, "category")
                 startSeconds = parseXmltvTime(pr@start)
                 stopSeconds = parseXmltvTime(pr@stop)
                 if not guide.doesExist(chId) then
@@ -84,6 +88,11 @@ function buildGuideMap(root as object) as object
                 if startSeconds > 0 then
                     guide[chId].programs.push({
                         title: title
+                        subtitle: subtitle
+                        desc: desc
+                        episodeNum: episodeNum
+                        episodeDisplay: formatEpisodeDisplay(episodeNum)
+                        category: category
                         start: startSeconds
                         stop: stopSeconds
                     })
@@ -173,6 +182,55 @@ function epochSecondsUtc(year as integer, month as integer, day as integer, hour
     daysSinceEpoch = (era * 146097) + dayOfEra - 719468
 
     return (daysSinceEpoch * 86400) + (hour * 3600) + (minute * 60) + second
+end function
+
+function firstElementText(parent as object, name as string) as string
+    if parent = invalid then return ""
+    items = parent.getNamedElements(name)
+    if items = invalid or items.count() = 0 then return ""
+
+    text = items[0].getText()
+    if text = invalid then return ""
+    return text.toStr().Trim()
+end function
+
+function formatEpisodeDisplay(value as dynamic) as string
+    raw = ""
+    if value <> invalid then raw = value.toStr().Trim()
+    if raw = "" then return ""
+
+    lowerRaw = lcase(raw)
+    if lowerRaw.instr("s") >= 0 and lowerRaw.instr("e") >= 0 then return raw
+
+    slash = raw.instr("/")
+    if slash > 0 then raw = raw.Left(slash).Trim()
+
+    parts = raw.Split(".")
+    if parts.count() >= 2 then
+        seasonText = parts[0].Trim()
+        episodeText = parts[1].Trim()
+        if isIntegerText(seasonText) and isIntegerText(episodeText) then
+            season = seasonText.toInt() + 1
+            episode = episodeText.toInt() + 1
+            return "S" + padTwoDigits(season) + "E" + padTwoDigits(episode)
+        end if
+    end if
+
+    return raw
+end function
+
+function isIntegerText(value as string) as boolean
+    if value = "" then return false
+    for i = 0 to value.Len() - 1
+        ch = value.Mid(i, 1)
+        if ch < "0" or ch > "9" then return false
+    end for
+    return true
+end function
+
+function padTwoDigits(value as integer) as string
+    if value < 10 then return "0" + value.toStr()
+    return value.toStr()
 end function
 
 function normalizeKey(value as dynamic) as string

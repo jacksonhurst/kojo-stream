@@ -30,6 +30,13 @@ sub init()
             Subtitle: m.top.findNode("PlaybackStatusSubtitle"),
             Pulse: m.top.findNode("PlaybackStatusPulse")
         },
+        ProgramInfo: {
+            Container: m.top.findNode("ProgramInfoPanel"),
+            Title: m.top.findNode("ProgramInfoTitle"),
+            Time: m.top.findNode("ProgramInfoTime"),
+            Meta: m.top.findNode("ProgramInfoMeta"),
+            Description: m.top.findNode("ProgramInfoDescription")
+        },
         Timer: m.top.findNode("ChannelLoadedTimer"),
         GuideTickTimer: m.top.findNode("GuideTickTimer"),
         XmltvRefreshTimer: m.top.findNode("XmltvRefreshTimer"),
@@ -56,6 +63,7 @@ sub init()
     m.guideStepSeconds = 1800
     m.guideMaxOffsetSeconds = 86400
     m.guideSlideOffset = 0
+    m.selectedGuideRow = -1
     m.fastScrollKey = ""
     m.fastScrollTicks = 0
 
@@ -377,6 +385,7 @@ sub startLoadingPlaylist(url as string)
         end if
     end if
     stopXmltvTimers()
+    hideGuidePanel()
     hidePlaybackStatusOverlay()
 
     ' Save as last used
@@ -1546,6 +1555,7 @@ sub ensureGuideFields(ch as object)
     if ch.guideVersion = invalid then ch.addField("guideVersion", "integer", true)
     if ch.guideSlideOffset = invalid then ch.addField("guideSlideOffset", "integer", true)
     if ch.guideWindowStart = invalid then ch.addField("guideWindowStart", "integer", true)
+    if ch.guideSelectedIndex = invalid then ch.addField("guideSelectedIndex", "integer", true)
 
     if ch.guide0Title = invalid then ch.addField("guide0Title", "string", true)
     if ch.guide0Time = invalid then ch.addField("guide0Time", "string", true)
@@ -1738,6 +1748,7 @@ sub updateGuidePanelForFocusedItem()
 
     timeStart = currentGuideWindowStart()
     updateGuideTimeHeaders(timeStart)
+    updateSelectedProgramForFocusedRow(timeStart)
     m.nodes.GuidePanel.Container.visible = true
 end sub
 
@@ -1745,7 +1756,133 @@ sub hideGuidePanel()
     if m.nodes = invalid then return
     if m.nodes.GuidePanel = invalid then return
     m.nodes.GuidePanel.Container.visible = false
+    hideProgramInfoPanel()
+    clearSelectedGuideRow()
 end sub
+
+sub updateSelectedProgramForFocusedRow(windowStart as integer)
+    row = currentChannelFocusRow()
+    if row < 0 or m.content = invalid or row >= m.content.getChildCount() then
+        hideProgramInfoPanel()
+        clearSelectedGuideRow()
+        return
+    end if
+
+    ch = m.content.getChild(row)
+    if ch = invalid or ch.isLoading then
+        hideProgramInfoPanel()
+        clearSelectedGuideRow()
+        return
+    end if
+
+    epg = lookupEpgForChannel(ch)
+    selected = selectedProgramForWindow(epg, windowStart)
+    if selected = invalid then
+        hideProgramInfoPanel()
+        clearSelectedGuideRow()
+        return
+    end if
+
+    setSelectedGuideRow(row, selected.index)
+    showProgramInfoPanel(selected.program)
+end sub
+
+function selectedProgramForWindow(epg as object, windowStart as integer) as object
+    if epg = invalid then return invalid
+    programs = guideProgramsForWindow(epg, windowStart, windowStart + m.guideWindowSeconds, m.guideProgramSlots)
+    if programs = invalid or programs.count() = 0 then return invalid
+
+    selectedIndex = 0
+    for i = 0 to programs.count() - 1
+        program = programs[i]
+        startSeconds = program.startSeconds
+        stopSeconds = program.stopSeconds
+        if stopSeconds <= startSeconds then stopSeconds = startSeconds + 1800
+        if startSeconds <= windowStart and stopSeconds > windowStart then
+            selectedIndex = i
+            exit for
+        end if
+    end for
+
+    return {program: programs[selectedIndex], index: selectedIndex}
+end function
+
+sub setSelectedGuideRow(row as integer, selectedIndex as integer)
+    if m.selectedGuideRow <> invalid and m.selectedGuideRow >= 0 and m.selectedGuideRow <> row then
+        setGuideSelectedIndexForRow(m.selectedGuideRow, -1)
+    end if
+
+    m.selectedGuideRow = row
+    setGuideSelectedIndexForRow(row, selectedIndex)
+end sub
+
+sub clearSelectedGuideRow()
+    if m.selectedGuideRow <> invalid and m.selectedGuideRow >= 0 then
+        setGuideSelectedIndexForRow(m.selectedGuideRow, -1)
+    end if
+    m.selectedGuideRow = -1
+end sub
+
+sub setGuideSelectedIndexForRow(row as integer, selectedIndex as integer)
+    if m.content = invalid then return
+    if row < 0 or row >= m.content.getChildCount() then return
+
+    ch = m.content.getChild(row)
+    if ch = invalid then return
+    ensureGuideFields(ch)
+    if ch.guideSelectedIndex <> invalid and int(ch.guideSelectedIndex) = selectedIndex then return
+
+    ch.guideSelectedIndex = selectedIndex
+    incrementGuideVersion(ch)
+end sub
+
+sub incrementGuideVersion(ch as object)
+    if ch = invalid then return
+    ensureGuideFields(ch)
+    version = 0
+    if ch.guideVersion <> invalid then version = int(ch.guideVersion)
+    ch.guideVersion = version + 1
+end sub
+
+sub showProgramInfoPanel(program as object)
+    if m.nodes.ProgramInfo = invalid then return
+    if program = invalid then
+        hideProgramInfoPanel()
+        return
+    end if
+
+    title = cleanGuideText(program.title)
+    if title = "" then title = "Program details"
+    episodeText = getGuideProgramText(program, "episodeDisplay")
+    if episodeText = "" then episodeText = formatEpisodeDisplay(getGuideProgramText(program, "episodeNum"))
+    subtitle = getGuideProgramText(program, "subtitle")
+    category = getGuideProgramText(program, "category")
+    desc = getGuideProgramText(program, "desc")
+
+    meta = ""
+    if episodeText <> "" then meta = episodeText
+    if subtitle <> "" then meta = appendDetailPart(meta, subtitle)
+    if category <> "" then meta = appendDetailPart(meta, category)
+    if desc = "" and subtitle <> "" then desc = subtitle
+
+    m.nodes.ProgramInfo.Title.text = title
+    m.nodes.ProgramInfo.Time.text = formatGuideTimeRange(program.startSeconds, program.stopSeconds)
+    m.nodes.ProgramInfo.Meta.text = meta
+    m.nodes.ProgramInfo.Description.text = desc
+    m.nodes.ProgramInfo.Container.visible = true
+end sub
+
+sub hideProgramInfoPanel()
+    if m.nodes = invalid then return
+    if m.nodes.ProgramInfo = invalid then return
+    m.nodes.ProgramInfo.Container.visible = false
+end sub
+
+function appendDetailPart(base as string, value as string) as string
+    if value = "" then return base
+    if base = "" then return value
+    return base + "  |  " + value
+end function
 
 function cleanGuideText(value as dynamic) as string
     if value = invalid then return ""
@@ -1780,6 +1917,11 @@ function guideProgramsForWindow(epg as object, windowStart as integer, windowEnd
                 if sortValue < windowStart then sortValue = windowStart
                 candidate = {
                     title: title
+                    subtitle: getGuideProgramText(pr, "subtitle")
+                    desc: getGuideProgramText(pr, "desc")
+                    episodeNum: getGuideProgramText(pr, "episodeNum")
+                    episodeDisplay: getGuideProgramText(pr, "episodeDisplay")
+                    category: getGuideProgramText(pr, "category")
                     startSeconds: startSeconds
                     stopSeconds: stopSeconds
                     sortSeconds: sortValue
@@ -1889,6 +2031,39 @@ function formatGuideTimeRange(startSeconds as integer, stopSeconds as integer) a
     return startText
 end function
 
+function formatEpisodeDisplay(value as dynamic) as string
+    raw = cleanGuideText(value)
+    if raw = "" then return ""
+
+    lowerRaw = lcase(raw)
+    if lowerRaw.instr("s") >= 0 and lowerRaw.instr("e") >= 0 then return raw
+
+    slash = raw.instr("/")
+    if slash > 0 then raw = raw.Left(slash).Trim()
+
+    parts = raw.Split(".")
+    if parts.count() >= 2 then
+        seasonText = parts[0].Trim()
+        episodeText = parts[1].Trim()
+        if isIntegerText(seasonText) and isIntegerText(episodeText) then
+            season = seasonText.toInt() + 1
+            episode = episodeText.toInt() + 1
+            return "S" + padTwoDigits(season) + "E" + padTwoDigits(episode)
+        end if
+    end if
+
+    return raw
+end function
+
+function isIntegerText(value as string) as boolean
+    if value = "" then return false
+    for i = 0 to value.Len() - 1
+        ch = value.Mid(i, 1)
+        if ch < "0" or ch > "9" then return false
+    end for
+    return true
+end function
+
 function formatGuideClock(seconds as integer) as string
     if seconds <= 0 then return ""
     dt = createObject("roDateTime")
@@ -1970,6 +2145,12 @@ end function
 function getGuideProgramTitle(program as object) as string
     if program = invalid or type(program) <> "roAssociativeArray" then return ""
     if program.doesExist("title") and program.title <> invalid then return program.title.toStr()
+    return ""
+end function
+
+function getGuideProgramText(program as object, fieldName as string) as string
+    if program = invalid or type(program) <> "roAssociativeArray" then return ""
+    if program.doesExist(fieldName) and program[fieldName] <> invalid then return cleanGuideText(program[fieldName])
     return ""
 end function
 

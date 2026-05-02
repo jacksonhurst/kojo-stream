@@ -132,6 +132,7 @@ sub renderGuideCells(content as object, animate as boolean)
         return
     end if
 
+    selectedIndex = getGuideSelectedIndex(content)
     for i = 0 to m.guideCells.count() - 1
         cell = m.guideCells[i]
         title = getGuideTitle(content, i)
@@ -152,6 +153,8 @@ sub renderGuideCells(content as object, animate as boolean)
             cell.time.width = width - 24
             cell.title.text = title
             cell.time.text = getGuideTime(content, i)
+            isSelected = (i = selectedIndex)
+            applyGuideCellStyle(cell, isSelected)
         else
             cell.container.visible = false
             cell.container.clippingRect = [0, 0, 1, 1]
@@ -207,6 +210,18 @@ sub resetGuideSlide()
     if m.GuideContent <> invalid then m.GuideContent.translation = [m.guideBaseX, 0]
 end sub
 
+sub applyGuideCellStyle(cell as object, selected as boolean)
+    if selected then
+        cell.background.color = "0x2F7DD8FF"
+        cell.title.color = "0xFFFFFFFF"
+        cell.time.color = "0xFFFFFFFF"
+    else
+        cell.background.color = "0x172A3FFF"
+        cell.title.color = "0xFFFFFFFF"
+        cell.time.color = "0x9FBDE8FF"
+    end if
+end sub
+
 function getGuideTitle(content as object, index as integer) as string
     if index = 0 and content.guide0Title <> invalid then return content.guide0Title
     if index = 1 and content.guide1Title <> invalid then return content.guide1Title
@@ -245,6 +260,11 @@ function getGuideWidth(content as object, index as integer) as integer
     if index = 4 and content.guide4Width <> invalid then return int(content.guide4Width)
     if index = 5 and content.guide5Width <> invalid then return int(content.guide5Width)
     return 0
+end function
+
+function getGuideSelectedIndex(content as object) as integer
+    if content <> invalid and content.guideSelectedIndex <> invalid then return int(content.guideSelectedIndex)
+    return -1
 end function
 
 sub updateSize()
