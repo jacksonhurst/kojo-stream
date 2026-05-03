@@ -25,6 +25,13 @@ services:
       KOJO_VIDEO_BUFSIZE: 20M
       KOJO_H264_LEVEL: "4.2"
       KOJO_AUDIO_BITRATE: 160k
+      KOJO_HLS_TIME: "4"
+      KOJO_HLS_LIST_SIZE: "15"
+      KOJO_HLS_DELETE_THRESHOLD: "15"
+      KOJO_MIN_START_SEGMENTS: "3"
+      KOJO_INPUT_RECONNECT: "true"
+      KOJO_RECONNECT_DELAY_MAX: "5"
+      KOJO_RW_TIMEOUT: "15000000"
       KOJO_SINGLE_ACTIVE_STREAM: "true"
       KOJO_STARTUP_RETRIES: "3"
     volumes:
@@ -55,11 +62,20 @@ environment:
   KOJO_VIDEO_BUFSIZE: 20M
   KOJO_H264_LEVEL: "4.2"
   KOJO_AUDIO_BITRATE: 160k
+  KOJO_HLS_TIME: "4"
+  KOJO_HLS_LIST_SIZE: "15"
+  KOJO_HLS_DELETE_THRESHOLD: "15"
+  KOJO_MIN_START_SEGMENTS: "3"
+  KOJO_INPUT_RECONNECT: "true"
+  KOJO_RECONNECT_DELAY_MAX: "5"
+  KOJO_RW_TIMEOUT: "15000000"
   KOJO_SINGLE_ACTIVE_STREAM: "true"
   KOJO_STARTUP_RETRIES: "3"
 ```
 
 Lower CRF means higher quality and larger bitrate. Good CPU values are usually `18` to `21`. Slower presets such as `medium` can look slightly better at the same bitrate, but use more CPU.
+
+The HLS settings favor stable live playback over lowest latency. Four-second segments and a 15-segment playlist give Roku roughly a minute of visible buffer window, while the delete threshold keeps older segments around if Roku briefly falls behind. If you want faster channel starts and lower latency, reduce `KOJO_HLS_TIME` and `KOJO_MIN_START_SEGMENTS`; if you see freezing or missing segment errors, increase `KOJO_HLS_LIST_SIZE` and `KOJO_HLS_DELETE_THRESHOLD`.
 
 `KOJO_H264_LEVEL=4.2` is the default because some 1080p live channels, especially 60 fps channels, exceed H.264 level 4.1 limits and make NVENC fail with `Invalid Level`.
 
@@ -82,7 +98,7 @@ environment:
   NVIDIA_VISIBLE_DEVICES: all
   NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
   KOJO_VIDEO_ENCODER: h264_nvenc
-  KOJO_NVENC_PRESET: p7
+  KOJO_NVENC_PRESET: p5
   KOJO_NVENC_TUNE: hq
   KOJO_NVENC_CQ: "16"
   KOJO_VIDEO_BITRATE: 14M
@@ -90,11 +106,18 @@ environment:
   KOJO_VIDEO_BUFSIZE: 40M
   KOJO_H264_LEVEL: "4.2"
   KOJO_AUDIO_BITRATE: 192k
+  KOJO_HLS_TIME: "4"
+  KOJO_HLS_LIST_SIZE: "15"
+  KOJO_HLS_DELETE_THRESHOLD: "15"
+  KOJO_MIN_START_SEGMENTS: "3"
+  KOJO_INPUT_RECONNECT: "true"
+  KOJO_RECONNECT_DELAY_MAX: "5"
+  KOJO_RW_TIMEOUT: "15000000"
   KOJO_SINGLE_ACTIVE_STREAM: "true"
   KOJO_STARTUP_RETRIES: "3"
 ```
 
-NVENC is much easier on the CPU and is a good fit for live TV. It is not mathematically lossless, but the NVIDIA stack is tuned to spend bitrate for quality: `cq=16`, `14M` target, and `20M` max. If the stream still looks too compressed, try `KOJO_NVENC_CQ=14` and `KOJO_VIDEO_MAXRATE=25M`. If bandwidth matters more than quality, try `cq=18-20` and `maxrate=10M-14M`.
+NVENC is much easier on the CPU and is a good fit for live TV. It is not mathematically lossless, but the NVIDIA stack is tuned to spend bitrate for quality: `cq=16`, `14M` target, and `20M` max. `p5` is the default because it gives a Quadro P4000 more real-time headroom than `p7`; if GPU utilization is low and you want to experiment with quality, try `p6` or `p7`. If the stream still looks too compressed, try `KOJO_NVENC_CQ=14` and `KOJO_VIDEO_MAXRATE=25M`. If bandwidth matters more than quality, try `cq=18-20` and `maxrate=10M-14M`.
 
 To confirm the container can see NVENC:
 
@@ -131,6 +154,13 @@ services:
       KOJO_VIDEO_BUFSIZE: 20M
       KOJO_H264_LEVEL: "4.2"
       KOJO_AUDIO_BITRATE: 160k
+      KOJO_HLS_TIME: "4"
+      KOJO_HLS_LIST_SIZE: "15"
+      KOJO_HLS_DELETE_THRESHOLD: "15"
+      KOJO_MIN_START_SEGMENTS: "3"
+      KOJO_INPUT_RECONNECT: "true"
+      KOJO_RECONNECT_DELAY_MAX: "5"
+      KOJO_RW_TIMEOUT: "15000000"
       KOJO_SINGLE_ACTIVE_STREAM: "true"
       KOJO_STARTUP_RETRIES: "3"
     volumes:

@@ -80,12 +80,13 @@ class TranscodeSession:
 
     def wait_for_playlist(self, timeout_seconds=90):
         deadline = time.time() + timeout_seconds
+        min_segments = parse_int(self.settings["min_start_segments"], 3)
         while time.time() < deadline:
             if self.is_closed():
                 return False
             if self.playlist_path.exists():
                 text = self.playlist_path.read_text("utf-8", errors="ignore")
-                if ".ts" in text:
+                if count_playlist_segments(text) >= min_segments:
                     return True
             if self.process is not None:
                 exit_code = self.process.poll()
@@ -124,14 +125,32 @@ class TranscodeSession:
             "-loglevel",
             "warning",
             "-fflags",
-            "+genpts",
+            "+genpts+discardcorrupt",
+            "-err_detect",
+            "ignore_err",
             "-probesize",
-            "5000000",
+            "10000000",
             "-analyzeduration",
-            "5000000",
+            "10000000",
             "-allowed_extensions",
             "ALL",
         ]
+
+        if parse_bool(self.settings["input_reconnect"]) and urlparse(self.source_url).scheme in ("http", "https"):
+            cmd.extend(
+                [
+                    "-reconnect",
+                    "1",
+                    "-reconnect_streamed",
+                    "1",
+                    "-reconnect_at_eof",
+                    "1",
+                    "-reconnect_delay_max",
+                    self.settings["reconnect_delay_max"],
+                ]
+            )
+            if self.settings["rw_timeout"]:
+                cmd.extend(["-rw_timeout", self.settings["rw_timeout"]])
 
         if self.headers.get("User-Agent"):
             cmd.extend(["-user_agent", self.headers["User-Agent"]])
@@ -147,6 +166,8 @@ class TranscodeSession:
         cmd.extend(self._build_video_args())
         cmd.extend(
             [
+                "-max_muxing_queue_size",
+                self.settings["max_muxing_queue_size"],
                 "-c:a",
                 "aac",
                 "-b:a",
@@ -164,7 +185,7 @@ class TranscodeSession:
                 "-hls_delete_threshold",
                 self.settings["hls_delete_threshold"],
                 "-hls_flags",
-                "delete_segments+independent_segments+program_date_time",
+                "delete_segments+independent_segments+program_date_time+temp_file",
                 "-hls_segment_filename",
                 "seg_%06d.ts",
                 "stream.m3u8",
@@ -440,6 +461,15 @@ def first_query_value(query, key):
     return values[0]
 
 
+def count_playlist_segments(playlist):
+    count = 0
+    for line in playlist.splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#"):
+            count += 1
+    return count
+
+
 def build_transcode_settings(args):
     return {
         "video_encoder": args.video_encoder,
@@ -457,10 +487,15 @@ def build_transcode_settings(args):
         "hls_time": args.hls_time,
         "hls_list_size": args.hls_list_size,
         "hls_delete_threshold": args.hls_delete_threshold,
+        "min_start_segments": args.min_start_segments,
         "keyframe_seconds": args.keyframe_seconds,
         "gop_size": args.gop_size,
         "single_active_stream": parse_bool(args.single_active_stream),
         "startup_retries": args.startup_retries,
+        "input_reconnect": args.input_reconnect,
+        "reconnect_delay_max": args.reconnect_delay_max,
+        "rw_timeout": args.rw_timeout,
+        "max_muxing_queue_size": args.max_muxing_queue_size,
     }
 
 
@@ -498,9 +533,10 @@ def main():
     parser.add_argument("--video-bufsize", default=os.getenv("KOJO_VIDEO_BUFSIZE", "20M"))
     parser.add_argument("--h264-level", default=os.getenv("KOJO_H264_LEVEL", "4.2"))
     parser.add_argument("--audio-bitrate", default=os.getenv("KOJO_AUDIO_BITRATE", "160k"))
-    parser.add_argument("--hls-time", default=os.getenv("KOJO_HLS_TIME", "2"))
-    parser.add_argument("--hls-list-size", default=os.getenv("KOJO_HLS_LIST_SIZE", "8"))
-    parser.add_argument("--hls-delete-threshold", default=os.getenv("KOJO_HLS_DELETE_THRESHOLD", "4"))
+    parser.add_argument("--hls-time", default=os.getenv("KOJO_HLS_TIME", "4"))
+    parser.add_argument("--hls-list-size", default=os.getenv("KOJO_HLS_LIST_SIZE", "15"))
+    parser.add_argument("--hls-delete-threshold", default=os.getenv("KOJO_HLS_DELETE_THRESHOLD", "15"))
+    parser.add_argument("--min-start-segments", default=os.getenv("KOJO_MIN_START_SEGMENTS", "3"))
     parser.add_argument("--keyframe-seconds", default=os.getenv("KOJO_KEYFRAME_SECONDS", "2"))
     parser.add_argument("--gop-size", default=os.getenv("KOJO_GOP_SIZE", "60"))
     parser.add_argument(
@@ -513,6 +549,10 @@ def main():
         default=os.getenv("KOJO_STARTUP_RETRIES", "3"),
         help="How many times to restart FFmpeg if it exits before producing an HLS playlist.",
     )
+    parser.add_argument("--input-reconnect", default=os.getenv("KOJO_INPUT_RECONNECT", "true"))
+    parser.add_argument("--reconnect-delay-max", default=os.getenv("KOJO_RECONNECT_DELAY_MAX", "5"))
+    parser.add_argument("--rw-timeout", default=os.getenv("KOJO_RW_TIMEOUT", "15000000"))
+    parser.add_argument("--max-muxing-queue-size", default=os.getenv("KOJO_MAX_MUXING_QUEUE_SIZE", "4096"))
     args = parser.parse_args()
 
     if shutil.which(args.ffmpeg) is None and not Path(args.ffmpeg).exists():
